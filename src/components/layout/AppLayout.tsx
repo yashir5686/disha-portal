@@ -30,7 +30,8 @@ const navigationItems = [
   { href: "/profile", label: "Profile", icon: User },
 ];
 
-export default function AppLayout({ children }: { children: ReactNode }) {
+
+function AppLayoutClient({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
   const navLinks = (
@@ -96,4 +97,9 @@ export default function AppLayout({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
+}
+
+
+export default function AppLayout({ children }: { children: ReactNode }) {
+    return <AppLayoutClient>{children}</AppLayoutClient>
 }
