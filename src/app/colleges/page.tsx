@@ -1,0 +1,122 @@
+'use client';
+import AppLayout from "@/components/layout/AppLayout";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { collegeData } from "@/lib/data";
+import { School, Search } from "lucide-react";
+import { useState } from "react";
+
+export default function CollegesPage() {
+  const [filteredColleges, setFilteredColleges] = useState(collegeData);
+  
+  // A real implementation would fetch these from an API
+  const states = [...new Set(collegeData.map(c => c.state))];
+  const districts = [...new Set(collegeData.map(c => c.district))];
+
+  const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+    const state = formData.get('state') as string;
+    const district = formData.get('district') as string;
+    const program = (formData.get('program') as string).toLowerCase();
+    
+    const results = collegeData.filter(college => {
+      const stateMatch = !state || college.state === state;
+      const districtMatch = !district || college.district === district;
+      const programMatch = !program || college.programs.some(p => p.toLowerCase().includes(program));
+      return stateMatch && districtMatch && programMatch;
+    });
+
+    setFilteredColleges(results);
+  };
+
+  return (
+    <AppLayout>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
+        <div className="flex items-center">
+          <h1 className="font-headline text-lg font-semibold md:text-2xl">Find Government Colleges</h1>
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Search Filters</CardTitle>
+            <CardDescription>Use the filters below to find colleges that match your criteria.</CardDescription>
+          </CardHeader>
+          <form onSubmit={handleSearch}>
+            <CardContent className="space-y-4">
+              <div className="grid md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="state">State</Label>
+                  <Select name="state">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a state" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {states.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="district">District</Label>
+                    <Select name="district">
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a district" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {districts.map(district => <SelectItem key={district} value={district}>{district}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="program">Program / Course</Label>
+                  <Input name="program" placeholder="e.g., B.Sc. Computer Science" />
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button type="submit">
+                <Search className="mr-2 h-4 w-4" />
+                Search Colleges
+              </Button>
+            </CardFooter>
+          </form>
+        </Card>
+
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {filteredColleges.map((college, index) => (
+            <Card key={index}>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <School className="w-5 h-5 text-primary" />
+                  {college.name}
+                </CardTitle>
+                <CardDescription>{college.district}, {college.state}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <h4 className="font-semibold mb-2">Popular Programs:</h4>
+                <ul className="list-disc list-inside text-sm text-muted-foreground">
+                  {college.programs.slice(0, 3).map(p => <li key={p}>{p}</li>)}
+                   {college.programs.length > 3 && <li>... and more</li>}
+                </ul>
+              </CardContent>
+              <CardFooter>
+                <Button variant="outline" asChild>
+                  <a href={college.website} target="_blank" rel="noopener noreferrer">Visit Website</a>
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+           {filteredColleges.length === 0 && (
+            <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground">No colleges found matching your criteria. Try broadening your search.</p>
+            </div>
+           )}
+        </div>
+
+      </main>
+    </AppLayout>
+  );
+}
