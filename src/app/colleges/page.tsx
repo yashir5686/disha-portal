@@ -18,8 +18,9 @@ function CollegeList({ initialColleges }: { initialColleges: College[] }) {
   const [selectedState, setSelectedState] = useState('');
 
   const handleStateChange = (state: string) => {
-    setSelectedState(state);
-    const districtList = state ? indianStatesAndDistricts[state as keyof typeof indianStatesAndDistricts] : [];
+    const isAllStates = state === 'all';
+    setSelectedState(isAllStates ? '' : state);
+    const districtList = state && !isAllStates ? indianStatesAndDistricts[state as keyof typeof indianStatesAndDistricts] : [];
     setDistricts(districtList || []);
   };
 
@@ -31,8 +32,8 @@ function CollegeList({ initialColleges }: { initialColleges: College[] }) {
     const program = (formData.get('program') as string).toLowerCase();
 
     const results = colleges.filter(college => {
-      const stateMatch = !state || college.state === state;
-      const districtMatch = !district || college.district === district;
+      const stateMatch = !state || state === 'all' || college.state === state;
+      const districtMatch = !district || district === 'all' || college.district === district;
       const programMatch = !program || college.programs.some(p => p.toLowerCase().includes(program));
       return stateMatch && districtMatch && programMatch;
     });
@@ -57,7 +58,7 @@ function CollegeList({ initialColleges }: { initialColleges: College[] }) {
                     <SelectValue placeholder="Select a state" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All States</SelectItem>
+                    <SelectItem value="all">All States</SelectItem>
                     {allStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -69,7 +70,7 @@ function CollegeList({ initialColleges }: { initialColleges: College[] }) {
                     <SelectValue placeholder="Select a district" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Districts</SelectItem>
+                    <SelectItem value="all">All Districts</SelectItem>
                     {districts.map(district => <SelectItem key={district} value={district}>{district}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -89,7 +90,7 @@ function CollegeList({ initialColleges }: { initialColleges: College[] }) {
         </form>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 mt-8">
         {filteredColleges.map((college, index) => (
           <Card key={index}>
             <CardHeader>
