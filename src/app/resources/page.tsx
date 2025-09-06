@@ -1,10 +1,12 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { studyResourcesData } from "@/lib/data";
+import { getStudyResources, StudyResource } from "@/ai/flows/get-study-resources";
 import { ArrowUpRight, BookCopy } from "lucide-react";
 import Image from "next/image";
 
-export default function ResourcesPage() {
+export default async function ResourcesPage() {
+  const studyResourcesData = await getStudyResources({ query: 'free study resources in India' });
+
   return (
     <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -16,7 +18,7 @@ export default function ResourcesPage() {
         </p>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {studyResourcesData.map((resource, index) => (
+          {studyResourcesData.resources.map((resource, index) => (
             <Card key={index} className="flex flex-col">
               <CardHeader>
                 <div className="relative aspect-video mb-4">

@@ -1,6 +1,6 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { timelineData } from "@/lib/data";
+import { getTimeline, TimelineEvent } from "@/ai/flows/get-timeline";
 import { Badge } from "@/components/ui/badge";
 
 function TimelineIcon({ type }: { type: string }) {
@@ -11,8 +11,9 @@ function TimelineIcon({ type }: { type: string }) {
   return <div className={`h-3 w-3 rounded-full ${colorClass}`} />;
 }
 
-export default function TimelinePage() {
-  const sortedTimeline = [...timelineData].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+export default async function TimelinePage() {
+  const timelineData = await getTimeline({ query: 'upcoming educational events in India' });
+  const sortedTimeline = [...timelineData.events].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
   return (
     <AppLayout>

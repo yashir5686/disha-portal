@@ -5,16 +5,34 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { collegeData } from "@/lib/data";
+import { getColleges, College } from "@/ai/flows/get-colleges";
 import { School, Search } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function CollegesPage() {
-  const [filteredColleges, setFilteredColleges] = useState(collegeData);
-  
-  // A real implementation would fetch these from an API
-  const states = [...new Set(collegeData.map(c => c.state))];
-  const districts = [...new Set(collegeData.map(c => c.district))];
+  const [colleges, setColleges] = useState<College[]>([]);
+  const [filteredColleges, setFilteredColleges] = useState<College[]>([]);
+  const [states, setStates] = useState<string[]>([]);
+  const [districts, setDistricts] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchColleges() {
+      try {
+        setLoading(true);
+        const collegeData = await getColleges({ query: 'top government colleges in India' });
+        setColleges(collegeData.colleges);
+        setFilteredColleges(collegeData.colleges);
+        setStates([...new Set(collegeData.colleges.map(c => c.state))]);
+        setDistricts([...new Set(collegeData.colleges.map(c => c.district))]);
+      } catch (error) {
+        console.error("Failed to fetch colleges:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchColleges();
+  }, []);
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -22,8 +40,8 @@ export default function CollegesPage() {
     const state = formData.get('state') as string;
     const district = formData.get('district') as string;
     const program = (formData.get('program') as string).toLowerCase();
-    
-    const results = collegeData.filter(college => {
+
+    const results = colleges.filter(college => {
       const stateMatch = !state || college.state === state;
       const districtMatch = !district || college.district === district;
       const programMatch = !program || college.programs.some(p => p.toLowerCase().includes(program));
@@ -85,36 +103,42 @@ export default function CollegesPage() {
           </form>
         </Card>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredColleges.map((college, index) => (
-            <Card key={index}>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <School className="w-5 h-5 text-primary" />
-                  {college.name}
-                </CardTitle>
-                <CardDescription>{college.district}, {college.state}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <h4 className="font-semibold mb-2">Popular Programs:</h4>
-                <ul className="list-disc list-inside text-sm text-muted-foreground">
-                  {college.programs.slice(0, 3).map(p => <li key={p}>{p}</li>)}
-                   {college.programs.length > 3 && <li>... and more</li>}
-                </ul>
-              </CardContent>
-              <CardFooter>
-                <Button variant="outline" asChild>
-                  <a href={college.website} target="_blank" rel="noopener noreferrer">Visit Website</a>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-           {filteredColleges.length === 0 && (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">No colleges found matching your criteria. Try broadening your search.</p>
-            </div>
-           )}
-        </div>
+        {loading ? (
+          <div className="col-span-full text-center py-12">
+            <p className="text-muted-foreground">Loading colleges...</p>
+          </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredColleges.map((college, index) => (
+              <Card key={index}>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <School className="w-5 h-5 text-primary" />
+                    {college.name}
+                  </CardTitle>
+                  <CardDescription>{college.district}, {college.state}</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <h4 className="font-semibold mb-2">Popular Programs:</h4>
+                  <ul className="list-disc list-inside text-sm text-muted-foreground">
+                    {college.programs.slice(0, 3).map(p => <li key={p}>{p}</li>)}
+                    {college.programs.length > 3 && <li>... and more</li>}
+                  </ul>
+                </CardContent>
+                <CardFooter>
+                  <Button variant="outline" asChild>
+                    <a href={college.website} target="_blank" rel="noopener noreferrer">Visit Website</a>
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+            {filteredColleges.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">No colleges found matching your criteria. Try broadening your search.</p>
+              </div>
+            )}
+          </div>
+        )}
 
       </main>
     </AppLayout>

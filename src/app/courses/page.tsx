@@ -1,9 +1,11 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { courseToCareerData } from "@/lib/data";
+import { getCoursesAndCareers, CourseToCareer } from "@/ai/flows/get-courses-and-careers";
 import { Briefcase, ChevronRight, GraduationCap } from "lucide-react";
 
-export default function CoursesPage() {
+export default async function CoursesPage() {
+  const courseToCareerData = await getCoursesAndCareers({ query: 'popular courses in India' });
+
   return (
     <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
@@ -15,7 +17,7 @@ export default function CoursesPage() {
         </p>
 
         <Accordion type="single" collapsible className="w-full">
-          {courseToCareerData.map((stream, index) => (
+          {courseToCareerData.streams.map((stream, index) => (
             <AccordionItem key={stream.streamName} value={`item-${index}`}>
               <AccordionTrigger className="text-xl font-headline hover:no-underline">
                 <div className="flex items-center gap-3">

@@ -2,21 +2,40 @@
 import AppLayout from "@/components/layout/AppLayout";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { scholarshipData } from "@/lib/data";
+import { getScholarships, Scholarship } from "@/ai/flows/get-scholarships";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, DollarSign } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 
 export default function ScholarshipsPage() {
-  const [filteredScholarships, setFilteredScholarships] = useState(scholarshipData);
+  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
+  const [filteredScholarships, setFilteredScholarships] = useState<Scholarship[]>([]);
+  const [levels, setLevels] = useState<string[]>([]);
+  const [streams, setStreams] = useState<string[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const levels = [...new Set(scholarshipData.map(s => s.level))];
-  const streams = [...new Set(scholarshipData.flatMap(s => s.tags).filter(t => ["Science", "Commerce", "Arts", "Vocational"].includes(t)))];
+  useEffect(() => {
+    async function fetchScholarships() {
+      try {
+        setLoading(true);
+        const scholarshipData = await getScholarships({ query: 'scholarships for Indian students' });
+        setScholarships(scholarshipData.scholarships);
+        setFilteredScholarships(scholarshipData.scholarships);
+        setLevels([...new Set(scholarshipData.scholarships.map(s => s.level))]);
+        setStreams([...new Set(scholarshipData.scholarships.flatMap(s => s.tags).filter(t => ["Science", "Commerce", "Arts", "Vocational"].includes(t)))]);
+      } catch (error) {
+        console.error("Failed to fetch scholarships:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchScholarships();
+  }, []);
 
   const handleFilterChange = (type: 'level' | 'stream', value: string) => {
-    let results = scholarshipData;
+    let results = scholarships;
     if (value) {
       if (type === 'level') {
         results = results.filter(s => s.level === value);
@@ -73,41 +92,47 @@ export default function ScholarshipsPage() {
             </CardContent>
         </Card>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {filteredScholarships.map((scholarship, index) => (
-            <Card key={index} className="flex flex-col">
-              <CardHeader>
-                <CardTitle className="flex items-start gap-2">
-                    <DollarSign className="w-5 h-5 text-primary mt-1 shrink-0" />
-                    <span>{scholarship.name}</span>
-                </CardTitle>
-                <CardDescription>By {scholarship.provider}</CardDescription>
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {scholarship.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                </div>
-              </CardHeader>
-              <CardContent className="flex-grow">
-                <p className="text-sm text-muted-foreground">{scholarship.description}</p>
-                <div className="mt-4">
-                    <h4 className="font-semibold text-sm">Eligibility</h4>
-                    <p className="text-sm text-muted-foreground">{scholarship.eligibility}</p>
-                </div>
-              </CardContent>
-              <CardFooter>
-                 <Button asChild className="w-full">
-                  <a href={scholarship.link} target="_blank" rel="noopener noreferrer">
-                    Apply Now <ArrowUpRight className="ml-2 h-4 w-4" />
-                  </a>
-                </Button>
-              </CardFooter>
-            </Card>
-          ))}
-           {filteredScholarships.length === 0 && (
-            <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">No scholarships found matching your criteria.</p>
+        {loading ? (
+           <div className="col-span-full text-center py-12">
+              <p className="text-muted-foreground">Loading scholarships...</p>
             </div>
-           )}
-        </div>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredScholarships.map((scholarship, index) => (
+              <Card key={index} className="flex flex-col">
+                <CardHeader>
+                  <CardTitle className="flex items-start gap-2">
+                      <DollarSign className="w-5 h-5 text-primary mt-1 shrink-0" />
+                      <span>{scholarship.name}</span>
+                  </CardTitle>
+                  <CardDescription>By {scholarship.provider}</CardDescription>
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {scholarship.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-grow">
+                  <p className="text-sm text-muted-foreground">{scholarship.description}</p>
+                  <div className="mt-4">
+                      <h4 className="font-semibold text-sm">Eligibility</h4>
+                      <p className="text-sm text-muted-foreground">{scholarship.eligibility}</p>
+                  </div>
+                </CardContent>
+                <CardFooter>
+                  <Button asChild className="w-full">
+                    <a href={scholarship.link} target="_blank" rel="noopener noreferrer">
+                      Apply Now <ArrowUpRight className="ml-2 h-4 w-4" />
+                    </a>
+                  </Button>
+                </CardFooter>
+              </Card>
+            ))}
+            {filteredScholarships.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <p className="text-muted-foreground">No scholarships found matching your criteria.</p>
+              </div>
+            )}
+          </div>
+        )}
       </main>
     </AppLayout>
   );
