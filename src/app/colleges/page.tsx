@@ -8,13 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { getColleges, College } from "@/ai/flows/get-colleges";
 import { School, Search } from "lucide-react";
 import { useEffect, useState } from "react";
+import { indianStatesAndDistricts } from "@/lib/india-data";
 
 export default function CollegesPage() {
   const [colleges, setColleges] = useState<College[]>([]);
   const [filteredColleges, setFilteredColleges] = useState<College[]>([]);
-  const [states, setStates] = useState<string[]>([]);
+  const allStates = Object.keys(indianStatesAndDistricts);
   const [districts, setDistricts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedState, setSelectedState] = useState('');
 
   useEffect(() => {
     async function fetchColleges() {
@@ -23,8 +25,6 @@ export default function CollegesPage() {
         const collegeData = await getColleges({ query: 'top government colleges in India' });
         setColleges(collegeData.colleges);
         setFilteredColleges(collegeData.colleges);
-        setStates([...new Set(collegeData.colleges.map(c => c.state))]);
-        setDistricts([...new Set(collegeData.colleges.map(c => c.district))]);
       } catch (error) {
         console.error("Failed to fetch colleges:", error);
       } finally {
@@ -33,6 +33,12 @@ export default function CollegesPage() {
     }
     fetchColleges();
   }, []);
+
+  const handleStateChange = (state: string) => {
+    setSelectedState(state);
+    const districtList = state ? indianStatesAndDistricts[state as keyof typeof indianStatesAndDistricts] : [];
+    setDistricts(districtList || []);
+  };
 
   const handleSearch = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -68,22 +74,24 @@ export default function CollegesPage() {
               <div className="grid md:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="state">State</Label>
-                  <Select name="state">
+                  <Select name="state" onValueChange={handleStateChange}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a state" />
                     </SelectTrigger>
                     <SelectContent>
-                      {states.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+                      <SelectItem value="">All States</SelectItem>
+                      {allStates.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="district">District</Label>
-                    <Select name="district">
+                    <Select name="district" key={selectedState} disabled={!selectedState}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select a district" />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="">All Districts</SelectItem>
                       {districts.map(district => <SelectItem key={district} value={district}>{district}</SelectItem>)}
                     </SelectContent>
                   </Select>
