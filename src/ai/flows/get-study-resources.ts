@@ -50,7 +50,7 @@ const prompt = ai.definePrompt({
     output: { schema: GetStudyResourcesOutputSchema },
     prompt: `You are an expert on Indian educational and career resources. Find a list of resources based on the following query: {{{query}}}.
     
-    {{#if (eq type "article")}}
+    {{#if (eval "type === 'article'")}}
     Your goal is to find 4-5 relevant and insightful articles. For the output, only populate the 'articles' field. The 'resources' field should be an empty array.
     {{else}}
     Your goal is to find 4 study resources like online course platforms, tutorials, etc. For the output, only populate the 'resources' field. The 'articles' field should be an empty array. Use https://picsum.photos/400/225 for image urls.
