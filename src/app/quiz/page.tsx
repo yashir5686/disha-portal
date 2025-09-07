@@ -1,14 +1,13 @@
 "use client";
 
 import AppLayout from "@/components/layout/AppLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm, FormProvider } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import {
   getPersonalizedStreamRecommendation,
   type PersonalizedStreamRecommendationOutput,
 } from "@/ai/flows/personalized-stream-recommendation-from-quiz";
+import { getQuizQuestion, type QuizQuestion } from "@/ai/flows/get-quiz-questions";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -30,119 +29,149 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, Lightbulb, Sparkles, BrainCircuit } from "lucide-react";
+import Image from "next/image";
+import { cn } from "@/lib/utils";
 
-const quizQuestions = [
-  {
-    id: "q1",
-    question: "Which activity sounds most interesting to you?",
-    options: [
-      { value: "4", label: "Building or fixing things (like computers, bikes)" }, // Realistic
-      { value: "3", label: "Solving complex puzzles or math problems" }, // Investigative
-      { value: "1", label: "Creating art, music, or writing stories" }, // Artistic
-      { value: "2", label: "Leading a team or organizing an event" }, // Enterprising
-    ],
-  },
-  {
-    id: "q2",
-    question: "When faced with a problem, you prefer to:",
-    options: [
-      { value: "3", label: "Analyze data and research to find a logical solution" }, // Investigative
-      { value: "1", label: "Brainstorm creative and unconventional ideas" }, // Artistic
-      { value: "4", label: "Take practical, hands-on steps to solve it" }, // Realistic
-      { value: "2", label: "Persuade and negotiate with others to reach a consensus" }, // Enterprising
-    ],
-  },
-  {
-    id: "q3",
-    question: "Which subjects do you enjoy most in school?",
-    options: [
-      { value: "1", label: "Languages, History, or Social Studies" }, // Artistic/Social
-      { value: "3", label: "Physics, Chemistry, or Biology" }, // Investigative
-      { value: "2", label: "Business Studies, Economics, or Accounting" }, // Conventional/Enterprising
-      { value: "4", label: "Computer Science, Woodwork, or a technical subject" }, // Realistic
-    ],
-  },
-   {
-    id: "q4",
-    question: "Your ideal work environment would be:",
-    options: [
-      { value: "4", label: "A workshop, a lab, or outdoors" }, // Realistic
-      { value: "1", label: "A studio, a library, or a theater" }, // Artistic
-      { value: "2", label: "An office, leading projects and making decisions" }, // Enterprising
-      { value: "3", label: "A research institution or a university" }, // Investigative
-    ],
-  },
-];
+const TOTAL_QUESTIONS = 5;
 
-const totalSteps = quizQuestions.length + 1; // +1 for profile info
-
-const formSchema = z.object({
-  ...quizQuestions.reduce((acc, q) => {
-    acc[q.id] = z.string({ required_error: "Please select an option." });
-    return acc;
-  }, {} as Record<string, z.ZodString>),
-  profileInformation: z.string().min(30, {
-    message: "Please tell us a bit more about yourself (at least 30 characters).",
-  }),
-});
+type QuizState = {
+  questions: QuizQuestion[];
+  answers: { question: string; answer: string }[];
+  currentStep: number;
+  profileInfo: string;
+};
 
 export default function QuizPage() {
-  const [step, setStep] = useState(0);
-  const [loading, setLoading] = useState(false);
-  const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      profileInformation: "",
-    },
+  const [quizState, setQuizState] = useState<QuizState>({
+    questions: [],
+    answers: [],
+    currentStep: 0,
+    profileInfo: "",
   });
+  const [loading, setLoading] = useState(true);
+  const [loadingRecommendation, setLoadingRecommendation] = useState(false);
+  const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  async function onSubmit(data: z.infer<typeof formSchema>) {
-    setLoading(true);
+  const form = useForm();
+
+  // Fetch initial question
+  useEffect(() => {
+    async function fetchFirstQuestion() {
+      setLoading(true);
+      setError(null);
+      try {
+        const firstQuestion = await getQuizQuestion({ history: [] });
+        setQuizState(prevState => ({ ...prevState, questions: [firstQuestion] }));
+      } catch (err) {
+        console.error("Failed to fetch first question:", err);
+        setError("Could not start the quiz. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchFirstQuestion();
+  }, []);
+
+  const currentQuestion = quizState.questions[quizState.currentStep];
+
+  const processAndNext = async (data: any) => {
+    const answerId = data[currentQuestion.id];
+    const selectedOption = currentQuestion.options.find(o => o.id === answerId);
+    if (!selectedOption) return;
+
+    const answerValue = currentQuestion.type === 'text' ? (selectedOption as any).value : selectedOption.alt;
+    
+    const newAnswers = [...quizState.answers, { question: currentQuestion.question, answer: answerValue }];
+    
+    setQuizState(prevState => ({
+      ...prevState,
+      answers: newAnswers,
+    }));
+    
+    // If it's the last question, go to profile page. Otherwise, fetch next question.
+    if (quizState.currentStep >= TOTAL_QUESTIONS - 1) {
+       setQuizState(prevState => ({ ...prevState, currentStep: prevState.currentStep + 1 }));
+    } else {
+      setLoading(true);
+      setError(null);
+      try {
+        const nextQuestion = await getQuizQuestion({ history: newAnswers });
+        form.reset();
+        setQuizState(prevState => ({
+          ...prevState,
+          questions: [...prevState.questions, nextQuestion],
+          currentStep: prevState.currentStep + 1
+        }));
+      } catch (err) {
+        console.error("Failed to fetch next question:", err);
+        setError("Could not load the next question. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  const getRecommendation = async (data: any) => {
+    setLoadingRecommendation(true);
+    setError(null);
     setRecommendation(null);
     try {
-      const quizResults = Object.fromEntries(
-        Object.entries(data)
-          .filter(([key]) => key.startsWith('q'))
-          .map(([key, value]) => [key, parseInt(value, 10)])
-      );
-      
       const result = await getPersonalizedStreamRecommendation({
-        quizResults,
+        quizResults: quizState.answers,
         profileInformation: data.profileInformation,
       });
       setRecommendation(result);
     } catch (error) {
       console.error("Error getting recommendation:", error);
-      // Handle error display to user
+      setError("We couldn't generate your recommendation. Please try again.");
     } finally {
-      setLoading(false);
-    }
-  }
-
-  const nextStep = async () => {
-    const fieldsToValidate = step < quizQuestions.length ? [quizQuestions[step].id] : ['profileInformation'];
-    const isValid = await form.trigger(fieldsToValidate as any);
-    if (isValid) {
-      if (step < totalSteps - 1) {
-        setStep(s => s + 1);
-      } else {
-        form.handleSubmit(onSubmit)();
-      }
+      setLoadingRecommendation(false);
     }
   };
 
-  const prevStep = () => setStep(s => s - 1);
   const restartQuiz = () => {
-    setStep(0);
+    setQuizState({
+      questions: [],
+      answers: [],
+      currentStep: 0,
+      profileInfo: "",
+    });
     setRecommendation(null);
+    setError(null);
+    setLoading(true);
+    // Refetch the first question
+    async function fetchFirstQuestion() {
+      try {
+        const firstQuestion = await getQuizQuestion({ history: [] });
+        setQuizState(prevState => ({ ...prevState, questions: [firstQuestion] }));
+      } catch (err) {
+        console.error("Failed to fetch first question:", err);
+        setError("Could not restart the quiz. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchFirstQuestion();
     form.reset();
+  };
+  
+  const prevStep = () => {
+     if (quizState.currentStep > 0) {
+        form.reset();
+        const prevAnswer = form.getValues(quizState.questions[quizState.currentStep - 1].id)
+        setQuizState(prevState => ({
+          ...prevState,
+          answers: prevState.answers.slice(0, -1),
+          currentStep: prevState.currentStep - 1,
+        }));
+        form.setValue(quizState.questions[quizState.currentStep - 1].id, prevAnswer)
+     }
   }
 
-  const progressValue = (step / (totalSteps-1)) * 100;
+  const progressValue = (quizState.currentStep / TOTAL_QUESTIONS) * 100;
 
-  if (loading) {
+  if (loadingRecommendation) {
     return (
       <AppLayout>
         <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 items-center justify-center">
@@ -196,69 +225,105 @@ export default function QuizPage() {
   return (
     <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 justify-center items-center">
-        <Card className="w-full max-w-lg">
+        <Card className="w-full max-w-2xl">
           <CardHeader>
             <CardTitle className="font-headline text-2xl">Stream Recommendation Quiz</CardTitle>
             <CardDescription>Answer a few questions to find the stream that's right for you.</CardDescription>
             <Progress value={progressValue} className="mt-4" />
+             <p className="text-sm text-muted-foreground text-center pt-2">Question {quizState.currentStep + 1} of {TOTAL_QUESTIONS}</p>
           </CardHeader>
           <FormProvider {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <CardContent>
-                {step < quizQuestions.length && (
+            <form onSubmit={form.handleSubmit(currentQuestion && quizState.currentStep >= TOTAL_QUESTIONS ? getRecommendation : processAndNext)}>
+              <CardContent className="min-h-[300px]">
+                {loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  </div>
+                ) : error ? (
+                   <div className="text-destructive text-center">{error}</div>
+                ) : currentQuestion && quizState.currentStep < TOTAL_QUESTIONS ? (
                   <FormField
                     control={form.control}
-                    name={quizQuestions[step].id}
+                    name={currentQuestion.id}
+                    rules={{ required: "Please select an option." }}
                     render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormLabel className="text-lg font-semibold">{quizQuestions[step].question}</FormLabel>
+                      <FormItem>
+                        <FormLabel className="text-xl font-semibold text-center block">{currentQuestion.question}</FormLabel>
                         <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="flex flex-col space-y-2"
-                          >
-                            {quizQuestions[step].options.map(option => (
-                              <FormItem key={option.value} className="flex items-center space-x-3 space-y-0 rounded-md border p-4 has-[[data-state=checked]]:border-primary">
-                                <FormControl>
-                                  <RadioGroupItem value={option.value} />
-                                </FormControl>
-                                <FormLabel className="font-normal">{option.label}</FormLabel>
-                              </FormItem>
-                            ))}
-                          </RadioGroup>
+                          {currentQuestion.type === 'text' ? (
+                            <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="flex flex-col space-y-2 pt-4"
+                            >
+                              {currentQuestion.options.map(option => (
+                                <FormItem key={option.id} className="flex items-center space-x-3 space-y-0 rounded-md border p-4 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5">
+                                  <FormControl>
+                                    <RadioGroupItem value={option.id} />
+                                  </FormControl>
+                                  <FormLabel className="font-normal text-base">{option.value}</FormLabel>
+                                </FormItem>
+                              ))}
+                            </RadioGroup>
+                          ) : (
+                             <RadioGroup
+                              onValueChange={field.onChange}
+                              defaultValue={field.value}
+                              className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4"
+                            >
+                              {currentQuestion.options.map(option => (
+                                <FormItem key={option.id} className="space-y-0">
+                                  <FormControl>
+                                    <RadioGroupItem value={option.id} className="sr-only" />
+                                  </FormControl>
+                                  <FormLabel className="font-normal">
+                                      <div className={cn("rounded-lg border-2 p-2 cursor-pointer", field.value === option.id ? "border-primary" : "border-transparent")}>
+                                        <div className="relative aspect-square w-full overflow-hidden rounded-md">
+                                            <Image src={option.imageUrl} alt={option.alt} fill className="object-cover" />
+                                        </div>
+                                        <p className="text-center text-sm mt-2">{option.alt}</p>
+                                      </div>
+                                  </FormLabel>
+                                </FormItem>
+                              ))}
+                            </RadioGroup>
+                          )}
                         </FormControl>
-                        <FormMessage />
+                        <FormMessage className="text-center" />
                       </FormItem>
                     )}
                   />
-                )}
-                {step === quizQuestions.length && (
+                ) : (
                   <FormField
                     control={form.control}
                     name="profileInformation"
+                    rules={{ minLength: { value: 30, message: "Please tell us a bit more about yourself (at least 30 characters)." } }}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="text-lg font-semibold">Tell us about yourself</FormLabel>
+                        <FormLabel className="text-xl font-semibold text-center block">Almost there! Tell us about yourself.</FormLabel>
                         <FormControl>
                           <Textarea
                             placeholder="Describe your interests, academic strengths, weaknesses, and any career goals you have in mind. The more details, the better the recommendation!"
-                            className="min-h-[120px]"
+                            className="min-h-[150px] mt-4 text-base"
                             {...field}
                           />
                         </FormControl>
-                        <FormMessage />
+                         <FormDescription className="text-center pt-2">
+                           This helps our AI provide a truly personalized recommendation.
+                        </FormDescription>
+                        <FormMessage className="text-center" />
                       </FormItem>
                     )}
                   />
                 )}
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={prevStep} disabled={step === 0}>
+                <Button type="button" variant="outline" onClick={prevStep} disabled={quizState.currentStep === 0}>
                   Previous
                 </Button>
-                <Button type="button" onClick={nextStep}>
-                  {step === totalSteps - 1 ? 'Get Recommendation' : 'Next'}
+                <Button type="submit" disabled={loading}>
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {quizState.currentStep >= TOTAL_QUESTIONS ? 'Get Recommendation' : 'Next'}
                 </Button>
               </CardFooter>
             </form>

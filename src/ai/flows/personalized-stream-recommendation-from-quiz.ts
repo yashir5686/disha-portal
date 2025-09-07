@@ -12,11 +12,10 @@ import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
 const PersonalizedStreamRecommendationInputSchema = z.object({
-  quizResults: z
-    .record(z.number())
-    .describe(
-      'A map of quiz question keys to the numerical score achieved by the user.  Higher is better.'
-    ),
+  quizResults: z.array(z.object({
+    question: z.string(),
+    answer: z.string()
+  })).describe('A list of questions and the user\'s answers.'),
   profileInformation: z
     .string()
     .describe(
@@ -53,19 +52,26 @@ const prompt = ai.definePrompt({
   name: 'personalizedStreamRecommendationPrompt',
   input: {schema: PersonalizedStreamRecommendationInputSchema},
   output: {schema: PersonalizedStreamRecommendationOutputSchema},
-  prompt: `You are an expert career counselor specializing in helping students choose the right academic stream.
+  prompt: `You are an expert career counselor specializing in helping students in India choose the right academic stream after 10th or 12th grade.
 
 Based on the student's quiz results and profile information, provide a personalized stream recommendation (Arts, Science, Commerce, or Vocational).
 Explain your reasoning in detail, showing how the quiz results and profile information led to your recommendation.
 
-Quiz Results: {{{quizResults}}}
+Quiz Results:
+{{#each quizResults}}
+  Q: {{question}}
+  A: {{answer}}
+{{/each}}
+
 Profile Information: {{{profileInformation}}}
 
 Consider these factors:
-* Interests expressed in the profile.
-* Aptitude indicated by quiz results.
+* Interests expressed in the profile and revealed through quiz answers.
+* Aptitude and personality traits indicated by quiz results.
 * Academic background described in the profile.
-* Alignment of stream with potential career goals.
+* Alignment of stream with potential career goals mentioned.
+
+Your reasoning should be encouraging and insightful. Analyze the patterns in the answers to identify the student's core interests (e.g., Realistic, Investigative, Artistic, Social, Enterprising, Conventional - RIASEC model), strengths, and personality.
 
 Ensure the recommendation is well-supported and provides actionable insights for the student.
 `,
