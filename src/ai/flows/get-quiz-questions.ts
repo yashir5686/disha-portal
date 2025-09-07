@@ -18,7 +18,7 @@ const BaseQuestionSchema = z.object({
 });
 
 const TextQuestionSchema = BaseQuestionSchema.extend({
-  type: z.literal('text'),
+  type: z.enum(['text']),
   options: z.array(z.object({
     id: z.string(),
     value: z.string().describe("The text for the option."),
@@ -26,7 +26,7 @@ const TextQuestionSchema = BaseQuestionSchema.extend({
 });
 
 const ImageQuestionSchema = BaseQuestionSchema.extend({
-  type: z.literal('image'),
+  type: z.enum(['image']),
   options: z.array(z.object({
     id: z.string(),
     imageUrl: z.string().url().describe("A URL for the image option. Use picsum.photos for placeholders."),
