@@ -62,37 +62,57 @@ const prompt = ai.definePrompt({
   name: 'getQuizQuestionPrompt',
   input: { schema: QuizQuestionInputSchema },
   output: { schema: QuizQuestionOutputSchema },
-  prompt: `You are a career counseling expert designing an adaptive quiz for students in India to recommend a career path.
+  prompt: `You are a psychometrics-aware content designer for Indian students. Generate the NEXT adaptive interest + capability quiz question that changes based on the learner’s class and stream selection.
 
-The student is in grade: {{{grade}}}.
-{{#if stream}}
-The student's stream is: {{{stream}}}.
-The goal is to recommend specific degree courses and career paths after 12th grade, based on their chosen stream: {{{stream}}}. The questions should be more focused on their stream-specific interests and skills.
-{{else}}
-The goal is to recommend a stream (Science, Commerce, Arts, Vocational) for 11th/12th grade. The questions should be broad to assess foundational interests and aptitudes.
-{{/if}}
-
-Generate the NEXT quiz question based on this context and the conversation history. The quiz should have a good mix of question types (single-choice, multiple-choice).
-- The quiz will be around 5-7 questions long.
-- Use the provided history of previous answers to make the next question more relevant and insightful.
-- Vary the question format. Sometimes ask about preferences, sometimes about problem-solving styles, sometimes about ideal work environments.
-- Questions should be designed to uncover the student's underlying interests, personality, and aptitudes, mapping to frameworks like RIASEC (Realistic, Investigative, Artistic, Social, Enterprising, Conventional) without mentioning the framework directly.
-
-Conversation History:
+CONTEXT
+- Student's grade: {{{grade}}}
+{{#if stream}}- Student's stream: {{{stream}}}{{/if}}
+- Locale: "en"
+- Quiz Length: This is one question in a 5-7 question quiz.
+- Conversation History (Previous Q&A):
 {{#if history}}
 {{#each history}}
   Q: {{question}}
   A: {{answer}}
 {{/each}}
 {{else}}
-  This is the first question. Start with a broad question to understand the user's general inclination, keeping their grade level in mind.
+  This is the first question.
 {{/if}}
 
-Based on the context and history, generate the next question.
-- Provide 4 diverse options for each question.
-- Ensure all option values and IDs are unique.
-- Create a mix of single-choice and multiple-choice questions.
-`,
+GOAL FOR THE QUIZ
+- Infer interests (RIASEC), self-efficacy (math, coding, lab, spatial, writing, business), and work-style (independent/team, structured/creative).
+- Map to stream-aligned pathways:
+  • Science (PCM/PCB/PCMB) → Pure Sciences, Engineering (Core), CS/IT & Data, Health & Life Sciences (for PCB), Applied/Design Tech.
+  • Arts → Humanities & Social Sciences, Media & Design, Public Policy & Law, Education.
+  • Commerce → Accounting & Finance, Business & Management, Analytics & Operations, Entrepreneurship & Marketing.
+  • Vocational → Technical Trades, IT Support & Networking, Health Technician, Agri-Tech, Design & Fabrication.
+
+ADAPTATION RULES FOR THIS QUESTION
+- Class 10th: simpler scenarios, everyday school contexts, foundational skills; avoid advanced jargon.
+- Class 12th: deeper subject contexts, labs/projects, specialized tools (e.g., titration, circuits, case studies, Excel/Sheets).
+- Science (PCM): physics–math problem solving, circuits, mechanics, coding for simulations, data analysis.
+- Science (PCB): biology labs, human/plant systems, healthcare contexts, field observations, environmental monitoring.
+- Arts: reading/writing, debates, design/media, history/civics/psychology/sociology, research from credible sources.
+- Commerce: accounts/ledgers, budgeting, business cases, marketing campaigns, data in spreadsheets, operations.
+- Vocational: hands-on builds, repairs, safety, tools, basic electronics, maker projects, agriculture, community problem solving.
+
+DESIGN PRINCIPLES
+- Behavior-based: Use concrete school-day or real-life situations in India (labs, practicals, group projects, fairs, NSS/NCC, fests, hackathons).
+- Reading level: ~Grade 8. Avoid jargon; one idea per item.
+- Balanced options; no “all/none of the above.”
+- Mix item types (single-choice and multiple-choice) to reduce bias.
+- India context only (CBSE/State board labs, NCERT references, local examples). No foreign curricula.
+
+REQUIREMENTS FOR THE GENERATED QUESTION
+- Generate ONE unique and concrete question that has not been asked before in the history.
+- Tailor the question and its options to the given grade and stream.
+- Provide 4 diverse options for the question. Ensure all option values and IDs are unique.
+- The question stem must be ≤ 18 words. Each option must be ≤ 14 words.
+- Each option in a scenario must clearly separate trait mixes (e.g., lab vs data vs coding vs teamwork).
+- Use Indian school contexts: NCERT labs/practicals, state board projects, science fairs/hackathons, community issues (water, waste, traffic), shop-floor visits, kirana inventory, UPI/digital payments, NSS/NCC drives, school magazine/debate, commerce club, maker lab/ITI/polytechnic.
+- No medical/clinical language. Guidance-only tone.
+
+Based on the context and history, generate the single next question now.`,
 });
 
 const getQuizQuestionFlow = ai.defineFlow(
