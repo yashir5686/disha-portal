@@ -5,7 +5,7 @@
  *
  * - getQuizQuestion - A function that generates a quiz question.
  * - QuizQuestionInput - The input type for the getQuizQuestion function.
- * - QuizQuestionOutput - The return type for the getQuizQuestion function.
+ * - QuizQuestion - The return type for the getQuizQuestion function.
  */
 
 import { ai } from '@/ai/genkit';
@@ -18,26 +18,26 @@ const BaseQuestionSchema = z.object({
   question: z.string().describe("The question text presented to the user."),
 });
 
-const TextQuestionSchema = BaseQuestionSchema.extend({
-  type: z.enum(['text']),
+const SingleChoiceQuestionSchema = BaseQuestionSchema.extend({
+  type: z.enum(['single-choice']),
   options: z.array(z.object({
     id: z.string(),
     value: z.string().describe("The text for the option."),
-  })).describe('A list of possible answers.'),
+  })).describe('A list of possible answers for a single-choice question.'),
 });
 
-const ImageQuestionSchema = BaseQuestionSchema.extend({
-  type: z.enum(['image']),
+const MultipleChoiceQuestionSchema = BaseQuestionSchema.extend({
+  type: z.enum(['multiple-choice']),
   options: z.array(z.object({
     id: z.string(),
-    imageUrl: z.string().url().describe("A URL for the image option. Use picsum.photos for placeholders."),
-    alt: z.string().describe("Alt text for the image, describing the activity or concept."),
-  })).describe('A list of image-based answers.'),
+    value: z.string().describe("The text for the option."),
+  })).describe('A list of possible answers for a multiple-choice question.'),
 });
 
+
 const QuizQuestionOutputSchema = z.discriminatedUnion('type', [
-  TextQuestionSchema,
-  ImageQuestionSchema,
+  SingleChoiceQuestionSchema,
+  MultipleChoiceQuestionSchema,
 ]);
 
 export type QuizQuestion = z.infer<typeof QuizQuestionOutputSchema>;
@@ -62,7 +62,7 @@ const prompt = ai.definePrompt({
   output: { schema: QuizQuestionOutputSchema },
   prompt: `You are a career counseling expert designing an adaptive quiz for students in India (after 10th/12th grade) to recommend a career stream (Science, Commerce, Arts, Vocational).
 
-Generate the NEXT quiz question. The quiz should have a good mix of question types (text, image).
+Generate the NEXT quiz question. The quiz should have a good mix of question types (single-choice, multiple-choice).
 - The quiz should be around 5-7 questions long.
 - Use the provided history of previous answers to make the next question more relevant and insightful.
 - Vary the question format. Sometimes ask about preferences, sometimes about problem-solving styles, sometimes about ideal work environments.
@@ -79,9 +79,9 @@ Conversation History:
 {{/if}}
 
 Based on the history, generate the next question.
-- For text questions, provide 4 diverse options.
-- For image questions, provide 4 diverse options with descriptive alt text that can be used to generate an image. I will generate the images. Use picsum.photos URLs as placeholders in the output schema.
+- Provide 4 diverse options for each question.
 - Ensure all option values and IDs are unique.
+- Create a mix of single-choice and multiple-choice questions.
 `,
 });
 

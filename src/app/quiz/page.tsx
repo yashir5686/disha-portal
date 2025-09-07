@@ -26,10 +26,10 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Loader2, Lightbulb, Sparkles, BrainCircuit, RefreshCw } from "lucide-react";
-import Image from "next/image";
 import { cn } from "@/lib/utils";
 
 const TOTAL_QUESTIONS = 5;
@@ -98,11 +98,20 @@ export default function QuizPage() {
   }
 
   const processAndNext = async (data: any) => {
-    const answerId = data[currentQuestion.id];
-    const selectedOption = currentQuestion.options.find(o => o.id === answerId);
-    if (!selectedOption) return;
+    const rawAnswer = data[currentQuestion.id];
+    let answerValue = '';
 
-    const answerValue = currentQuestion.type === 'text' ? (selectedOption as any).value : selectedOption.alt;
+    if (currentQuestion.type === 'single-choice') {
+        const selectedOption = currentQuestion.options.find(o => o.id === rawAnswer);
+        answerValue = selectedOption?.value || '';
+    } else if (currentQuestion.type === 'multiple-choice') {
+        const selectedOptions = currentQuestion.options
+            .filter(o => rawAnswer.includes(o.id))
+            .map(o => o.value);
+        answerValue = selectedOptions.join(', ');
+    }
+    
+    if (!answerValue) return;
     
     const newAnswers = [...quizState.answers, { question: currentQuestion.question, answer: answerValue }];
     
@@ -111,7 +120,6 @@ export default function QuizPage() {
       answers: newAnswers,
     }));
     
-    // If it's the last question, go to profile page. Otherwise, fetch next question.
     if (quizState.currentStep >= TOTAL_QUESTIONS - 1) {
        setQuizState(prevState => ({ ...prevState, currentStep: prevState.currentStep + 1 }));
     } else {
@@ -147,12 +155,12 @@ export default function QuizPage() {
     setRecommendation(null);
     setError(null);
     setLoading(true);
-    // Refetch the first question
     fetchFirstQuestion();
     form.reset();
   };
 
   const retryFetch = () => {
+    setError(null);
     if (quizState.questions.length === 0) {
       fetchFirstQuestion();
     } else {
@@ -255,12 +263,20 @@ export default function QuizPage() {
                   <FormField
                     control={form.control}
                     name={currentQuestion.id}
-                    rules={{ required: "Please select an option." }}
+                    rules={{ 
+                      required: "Please select an option.",
+                      validate: (value) => {
+                        if (currentQuestion.type === 'multiple-choice' && (!Array.isArray(value) || value.length === 0)) {
+                          return "Please select at least one option.";
+                        }
+                        return true;
+                      }
+                    }}
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xl font-semibold text-center block">{currentQuestion.question}</FormLabel>
                         <FormControl>
-                          {currentQuestion.type === 'text' ? (
+                          {currentQuestion.type === 'single-choice' ? (
                             <RadioGroup
                               onValueChange={field.onChange}
                               defaultValue={field.value}
@@ -276,27 +292,44 @@ export default function QuizPage() {
                               ))}
                             </RadioGroup>
                           ) : (
-                             <RadioGroup
-                              onValueChange={field.onChange}
-                              defaultValue={field.value}
-                              className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4"
-                            >
-                              {currentQuestion.options.map(option => (
-                                <FormItem key={option.id} className="space-y-0">
-                                  <FormControl>
-                                    <RadioGroupItem value={option.id} className="sr-only" />
-                                  </FormControl>
-                                  <FormLabel className="font-normal">
-                                      <div className={cn("rounded-lg border-2 p-2 cursor-pointer", field.value === option.id ? "border-primary" : "border-transparent")}>
-                                        <div className="relative aspect-square w-full overflow-hidden rounded-md">
-                                            <Image src={option.imageUrl} alt={option.alt} fill className="object-cover" />
-                                        </div>
-                                        <p className="text-center text-sm mt-2">{option.alt}</p>
-                                      </div>
-                                  </FormLabel>
-                                </FormItem>
-                              ))}
-                            </RadioGroup>
+                             <div className="flex flex-col space-y-2 pt-4">
+                                {currentQuestion.options.map(option => (
+                                  <FormField
+                                    key={option.id}
+                                    control={form.control}
+                                    name={currentQuestion.id}
+                                    render={({ field }) => {
+                                      return (
+                                        <FormItem
+                                          key={option.id}
+                                          className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
+                                        >
+                                          <FormControl>
+                                            <Checkbox
+                                              checked={field.value?.includes(option.id)}
+                                              onCheckedChange={(checked) => {
+                                                const currentValue = field.value || [];
+                                                if (checked) {
+                                                  field.onChange([...currentValue, option.id]);
+                                                } else {
+                                                  field.onChange(
+                                                    currentValue.filter(
+                                                      (value: string) => value !== option.id
+                                                    )
+                                                  );
+                                                }
+                                              }}
+                                            />
+                                          </FormControl>
+                                          <FormLabel className="font-normal text-base">
+                                            {option.value}
+                                          </FormLabel>
+                                        </FormItem>
+                                      )
+                                    }}
+                                  />
+                                ))}
+                              </div>
                           )}
                         </FormControl>
                         <FormMessage className="text-center" />
@@ -328,7 +361,7 @@ export default function QuizPage() {
                 )}
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={prevStep} disabled={quizState.currentStep === 0}>
+                <Button type="button" variant="outline" onClick={prevStep} disabled={loading || quizState.currentStep === 0}>
                   Previous
                 </Button>
                 <Button type="submit" disabled={loading || !!error}>
