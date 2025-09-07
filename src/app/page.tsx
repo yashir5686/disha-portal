@@ -115,43 +115,54 @@ export default function DashboardPage() {
           <div className="mb-12">
             <Card className="shadow-lg">
               <CardContent className="p-8">
-                {!user ? (
-                   <div className="flex flex-col md:flex-row items-center gap-6 text-center">
-                      <div className="flex-shrink-0">
-                        <Compass className="w-20 h-20 text-primary" />
-                      </div>
-                      <div className="flex-grow">
+                <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                  <div className="flex-shrink-0">
+                    {hasTakenQuiz ? (
+                      <Compass className="w-20 h-20 text-primary" />
+                    ) : (
+                      <Lightbulb className="w-20 h-20 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-grow">
+                    {hasTakenQuiz ? (
+                      <>
+                        <CardTitle className="text-3xl font-headline mb-2">
+                          Your Personalized Report is Ready!
+                        </CardTitle>
+                        <CardDescription className="text-lg mb-4">
+                          We recommend the "{recommendation?.recommendation}" path for you. View the full report for more details.
+                        </CardDescription>
+                        <Link href="/quiz" passHref>
+                          <Button size="lg" variant="secondary">
+                            View My Report
+                          </Button>
+                        </Link>
+                      </>
+                    ) : user ? (
+                      <>
+                        <CardTitle className="text-3xl font-headline mb-2">
+                          Find Your True Calling
+                        </CardTitle>
+                        <CardDescription className="text-lg mb-4">
+                          Take our comprehensive AI-powered assessment to discover your perfect career path.
+                        </CardDescription>
+                        <Link href="/quiz" passHref>
+                          <Button size="lg">
+                            Start Your Assessment
+                          </Button>
+                        </Link>
+                      </>
+                    ) : (
+                       <>
                         <CardTitle className="text-3xl font-headline mb-2">Discover Your Path</CardTitle>
                         <CardDescription className="text-lg mb-4">
                           Login to take our AI-powered assessment, save your progress, and get personalized recommendations.
                         </CardDescription>
                          <Button size="lg" onClick={handleLogin}><LogIn className="mr-2 h-5 w-5" /> Login to Continue</Button>
-                      </div>
-                   </div>
-                ) : (
-                  <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-                    <div className="flex-shrink-0">
-                      {hasTakenQuiz ? (
-                        <Compass className="w-20 h-20 text-primary" />
-                      ) : (
-                        <Lightbulb className="w-20 h-20 text-primary" />
-                      )}
-                    </div>
-                    <div className="flex-grow">
-                      <CardTitle className="text-3xl font-headline mb-2">
-                        {hasTakenQuiz ? "Your Personalized Report is Ready!" : "Find Your True Calling"}
-                      </CardTitle>
-                      <CardDescription className="text-lg mb-4">
-                        {hasTakenQuiz ? `We recommend the "${recommendation?.recommendation}" path for you. View the full report for more details.` : "Take our comprehensive AI-powered assessment to discover your perfect career path."}
-                      </CardDescription>
-                      <Link href="/quiz" passHref>
-                        <Button size="lg" variant={hasTakenQuiz ? "secondary" : "default"}>
-                          {hasTakenQuiz ? "View My Report" : "Start Your Assessment"}
-                        </Button>
-                      </Link>
-                    </div>
+                      </>
+                    )}
                   </div>
-                )}
+                </div>
               </CardContent>
             </Card>
           </div>
