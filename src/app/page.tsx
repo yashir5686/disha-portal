@@ -21,6 +21,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
 import type { PersonalizedStreamRecommendationOutput } from "@/ai/flows/personalized-stream-recommendation-from-quiz";
+import { getStudyResources, type StudyResource } from "@/ai/flows/get-study-resources";
 
 const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
 
@@ -33,6 +34,8 @@ export default function DashboardPage() {
   const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
   const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [featuredResource, setFeaturedResource] = useState<StudyResource | null>(null);
+
 
   useEffect(() => {
     // Check for saved recommendation in local storage
@@ -46,6 +49,22 @@ export default function DashboardPage() {
       }
     }
     setHasCheckedStorage(true);
+
+    async function fetchResource() {
+        try {
+            const resourceData = await getStudyResources({ query: 'any interesting study resource for students', type: 'resource' });
+            if (resourceData.resources.length > 0) {
+                // Pick a random resource
+                const randomIndex = Math.floor(Math.random() * resourceData.resources.length);
+                setFeaturedResource(resourceData.resources[randomIndex]);
+            }
+        } catch (error) {
+            console.error("Failed to fetch featured resource:", error);
+        }
+    }
+
+    fetchResource();
+
   }, []);
 
   const handleLogin = () => {
@@ -63,13 +82,14 @@ export default function DashboardPage() {
   
   const profileCompletion = user ? (hasTakenQuiz ? 65 : 30) : 0;
 
-
-  const featuredResource = {
+  const defaultResource = {
     title: "Resource Spotlight",
     description: "Discover a new study resource, an upcoming exam, or an interesting career fact to keep you engaged.",
-    image: "https://picsum.photos/600/400",
-    link: "#"
+    imageUrl: "https://picsum.photos/600/400",
+    link: "/resources"
   };
+
+  const resourceToDisplay = featuredResource || defaultResource;
   
   if (!hasCheckedStorage) {
     return (
@@ -267,13 +287,13 @@ export default function DashboardPage() {
           <div>
             <Card>
               <CardHeader>
-                <CardTitle>{featuredResource.title}</CardTitle>
+                <CardTitle>{resourceToDisplay.title}</CardTitle>
               </CardHeader>
               <CardContent className="flex flex-col md:flex-row gap-6">
                 <div className="md:w-1/3">
                   <Image 
-                    src={featuredResource.image} 
-                    alt={featuredResource.title} 
+                    src={resourceToDisplay.imageUrl} 
+                    alt={resourceToDisplay.title} 
                     width={600}
                     height={400}
                     data-ai-hint="books studying"
@@ -281,7 +301,7 @@ export default function DashboardPage() {
                   />
                 </div>
                 <div className="md:w-2/3">
-                  <p className="text-muted-foreground mb-4">{featuredResource.description}</p>
+                  <p className="text-muted-foreground mb-4">{resourceToDisplay.description}</p>
                   <Button asChild>
                     <Link href={'/resources'}>Learn More</Link>
                   </Button>
