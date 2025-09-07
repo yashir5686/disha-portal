@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview A dynamic quiz generation AI agent.
@@ -52,25 +53,6 @@ export type QuizQuestionInput = z.infer<typeof QuizQuestionInputSchema>;
 
 export async function getQuizQuestion(input: QuizQuestionInput): Promise<QuizQuestion> {
   const question = await getQuizQuestionFlow(input);
-  
-  // If it's an image question, we need to generate images for the options
-  if (question.type === 'image') {
-    const imagePromises = question.options.map(async (option) => {
-      const { media } = await ai.generate({
-        model: 'googleai/imagen-4.0-fast-generate-001',
-        prompt: `A vibrant, clear, and engaging photo representing the concept: "${option.alt}". The image should be suitable for a career quiz.`,
-        config: {
-          aspectRatio: "1:1",
-        },
-      });
-      return {
-        ...option,
-        imageUrl: media.url,
-      };
-    });
-    question.options = await Promise.all(imagePromises);
-  }
-  
   return question;
 }
 
@@ -98,7 +80,7 @@ Conversation History:
 
 Based on the history, generate the next question.
 - For text questions, provide 4 diverse options.
-- For image questions, provide 4 diverse options with descriptive alt text that can be used to generate an image. Do not provide image URLs, only alt text. I will generate the images. Use picsum.photos URLs as placeholders in the output schema.
+- For image questions, provide 4 diverse options with descriptive alt text that can be used to generate an image. I will generate the images. Use picsum.photos URLs as placeholders in the output schema.
 - Ensure all option values and IDs are unique.
 `,
 });
