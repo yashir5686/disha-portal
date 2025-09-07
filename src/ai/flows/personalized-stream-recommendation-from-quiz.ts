@@ -54,6 +54,13 @@ const DegreeInfoSchema = z.object({
   }),
 });
 
+const RecommendedCourseSchema = z.object({
+    title: z.string().describe("The title of the online course."),
+    platform: z.string().describe("The platform offering the course (e.g., Coursera, Udemy, SWAYAM)."),
+    price: z.string().describe("The price of the course (e.g., 'Free', 'Paid', 'Free with certificate')."),
+    link: z.string().url().describe("The direct link to the course page."),
+});
+
 const RecommendationSchema = z.object({
   recommendationTitle: z.string().describe("A short, catchy title for the recommendation section, e.g., 'Recommended Stream for You' or 'Your Recommended Career Path'."),
   recommendation: z
@@ -70,6 +77,7 @@ const RecommendationSchema = z.object({
   degreeOptions: z.array(DegreeInfoSchema).describe("A list of 2-3 detailed degree/course options aligned with the recommendation."),
   collegeSuggestions: z.array(CollegeRecommendationSchema).describe("A list of 3-4 government colleges suitable for the recommended path."),
   alternativeRecommendations: z.array(z.string()).describe("A list of 2-3 alternative career paths or streams for the student to consider."),
+  recommendedCourses: z.array(RecommendedCourseSchema).describe("A list of 2-3 recommended online courses from platforms like Coursera, SWAYAM, NPTEL etc.")
 });
 
 
@@ -117,6 +125,8 @@ Based on all the provided information, generate a comprehensive and personalized
 5.  **College Suggestions**: Recommend 3-4 well-known government colleges (\`collegeSuggestions\`) in India that are excellent for the recommended path. Include the college name, location (city, state), and the main entrance exam needed.
 
 6.  **Alternative Paths**: To provide a broader perspective, list 2-3 \`alternativeRecommendations\`. These should be viable backup options or related fields the student might also find interesting.
+    
+7.  **Online Courses**: Find 2-3 beginner-friendly online courses (\`recommendedCourses\`) from reputable platforms (like Coursera, NPTEL, SWAYAM, Udemy) that are relevant to the recommended path. For each, provide the title, platform, price ('Free' or 'Paid'), and a direct link.
 
 Your tone should be encouraging, insightful, and provide clear, actionable advice for the Indian context.
 `,

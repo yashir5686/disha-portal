@@ -41,7 +41,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Loader2, Lightbulb, Sparkles, BrainCircuit, RefreshCw, Briefcase, GraduationCap, Building, Search,ChevronRight } from "lucide-react";
+import { Loader2, Lightbulb, Sparkles, BrainCircuit, RefreshCw, Briefcase, GraduationCap, Building, Search,ChevronRight, ArrowUpRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
@@ -211,6 +211,28 @@ function RecommendationResult({ recommendation, onRestart }: { recommendation: P
                         </Accordion>
                      </div>
                 ))}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="courses" className="border rounded-lg">
+            <AccordionTrigger className="px-6 text-xl font-semibold"><BookOpen className="mr-2"/>Recommended Online Courses</AccordionTrigger>
+            <AccordionContent className="px-6 pt-2 space-y-4">
+              {recommendation.recommendedCourses.map((course, index) => (
+                <div key={index} className="p-4 border rounded-md flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="flex-1">
+                         <h4 className="font-bold">{course.title}</h4>
+                         <p className="text-sm text-muted-foreground">Platform: {course.platform}</p>
+                    </div>
+                    <div className="flex items-center gap-4 shrink-0">
+                         <Badge variant={course.price.toLowerCase() === 'free' ? 'default' : 'secondary'}>{course.price}</Badge>
+                        <Button asChild size="sm">
+                            <a href={course.link} target="_blank" rel="noopener noreferrer">
+                                Go to Course <ArrowUpRight className="ml-2 h-4 w-4"/>
+                            </a>
+                        </Button>
+                    </div>
+                </div>
+              ))}
             </AccordionContent>
           </AccordionItem>
 
@@ -679,5 +701,3 @@ export default function QuizPage() {
     </AppLayout>
   );
 }
-
-    
