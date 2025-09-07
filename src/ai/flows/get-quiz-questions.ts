@@ -62,13 +62,13 @@ const prompt = ai.definePrompt({
   name: 'getQuizQuestionPrompt',
   input: { schema: QuizQuestionInputSchema },
   output: { schema: QuizQuestionOutputSchema },
-  prompt: `You are a psychometrics-aware content designer for Indian students. Generate the NEXT adaptive interest + capability quiz question that changes based on the learner’s class and stream selection.
+  prompt: `You are a psychometrics-aware content designer for Indian students. Your task is to generate the NEXT adaptive interest + capability quiz question based on the user's progress.
 
 CONTEXT
-- Student's grade: {{{grade}}}
-{{#if stream}}- Student's stream: {{{stream}}}{{/if}}
+- Student's Grade Level: {{{grade}}}
+{{#if stream}}- Student's Stream: {{{stream}}}{{/if}}
 - Locale: "en"
-- Quiz Length: This is one question in a 5-7 question quiz.
+- Current Quiz Length: This is question {{history.length}} of a 5-7 question quiz.
 - Conversation History (Previous Q&A):
 {{#if history}}
 {{#each history}}
@@ -79,40 +79,32 @@ CONTEXT
   This is the first question.
 {{/if}}
 
-GOAL FOR THE QUIZ
-- Infer interests (RIASEC), self-efficacy (math, coding, lab, spatial, writing, business), and work-style (independent/team, structured/creative).
-- Map to stream-aligned pathways:
-  • Science (PCM/PCB/PCMB) → Pure Sciences, Engineering (Core), CS/IT & Data, Health & Life Sciences (for PCB), Applied/Design Tech.
-  • Arts → Humanities & Social Sciences, Media & Design, Public Policy & Law, Education.
-  • Commerce → Accounting & Finance, Business & Management, Analytics & Operations, Entrepreneurship & Marketing.
-  • Vocational → Technical Trades, IT Support & Networking, Health Technician, Agri-Tech, Design & Fabrication.
+QUIZ DESIGN & ADAPTATION RULES
 
-ADAPTATION RULES FOR THIS QUESTION
-- Class 10th: simpler scenarios, everyday school contexts, foundational skills; avoid advanced jargon.
-- Class 12th: deeper subject contexts, labs/projects, specialized tools (e.g., titration, circuits, case studies, Excel/Sheets).
-- Science (PCM): physics–math problem solving, circuits, mechanics, coding for simulations, data analysis.
-- Science (PCB): biology labs, human/plant systems, healthcare contexts, field observations, environmental monitoring.
-- Arts: reading/writing, debates, design/media, history/civics/psychology/sociology, research from credible sources.
-- Commerce: accounts/ledgers, budgeting, business cases, marketing campaigns, data in spreadsheets, operations.
-- Vocational: hands-on builds, repairs, safety, tools, basic electronics, maker projects, agriculture, community problem solving.
+1.  **Adapt by Class Level:**
+    *   **Class 10:** Use simpler, everyday school scenarios. Keep language direct. Focus on foundational interests.
+    *   **Class 12:** Use deeper, subject-specific contexts involving labs, projects, or tools.
 
-DESIGN PRINCIPLES
-- Behavior-based: Use concrete school-day or real-life situations in India (labs, practicals, group projects, fairs, NSS/NCC, fests, hackathons).
-- Reading level: ~Grade 8. Avoid jargon; one idea per item.
-- Balanced options; no “all/none of the above.”
-- Mix item types (single-choice and multiple-choice) to reduce bias.
-- India context only (CBSE/State board labs, NCERT references, local examples). No foreign curricula.
+2.  **Adapt by Stream (Scenario Emphasis):**
+    *   **Science (PCM):** Focus on problem-solving, mechanics/circuits, coding simulations, data analysis, lab troubleshooting.
+    *   **Science (PCB):** Focus on biology labs, field observations, healthcare contexts, environment/sustainability, people-service.
+    *   **Science (PCMB):** Create a balanced mix of PCM and PCB contexts.
+    *   **Arts:** Focus on research, writing/analysis, debates, presentations, media/design tasks.
+    *   **Commerce:** Focus on ledgers/budgeting, small business cases, marketing experiments, spreadsheet/data tasks, operations.
+    *   **Vocational:** Focus on hands-on builds/repairs, safety and tools, basic electronics, maker/ITI-style projects.
 
-REQUIREMENTS FOR THE GENERATED QUESTION
-- Generate ONE unique and concrete question that has not been asked before in the history.
-- Tailor the question and its options to the given grade and stream.
-- Provide 4 diverse options for the question. Ensure all option values and IDs are unique.
-- The question stem must be ≤ 18 words. Each option must be ≤ 14 words.
-- Each option in a scenario must clearly separate trait mixes (e.g., lab vs data vs coding vs teamwork).
-- Use Indian school contexts: NCERT labs/practicals, state board projects, science fairs/hackathons, community issues (water, waste, traffic), shop-floor visits, kirana inventory, UPI/digital payments, NSS/NCC drives, school magazine/debate, commerce club, maker lab/ITI/polytechnic.
-- No medical/clinical language. Guidance-only tone.
+3.  **Question Type & Structure:**
+    *   The quiz primarily uses **scenario-based forced-choice questions**.
+    *   Stems must be ≤ 18 words. Options must be ≤ 14 words.
+    *   Provide 4 balanced options (A-D) with no obviously "right" or "wrong" answer.
+    *   Each option in a scenario must clearly separate different traits (e.g., a lab task vs. a data analysis task vs. a coding task vs. a teamwork task).
 
-Based on the context and history, generate the single next question now.`,
+4.  **Content Requirements:**
+    *   **Indian Context:** Use only Indian school contexts (e.g., NCERT labs, state board projects, science fairs, hackathons, NSS/NCC drives, community issues like water/waste, kirana inventory, UPI payments, school magazines, commerce clubs).
+    *   **Unique Questions:** Generate ONE unique and concrete question that has not been asked before in the history.
+    *   **Guidance-only Tone:** Avoid clinical or diagnostic language. This is for career guidance, not assessment of disorders.
+
+Based on the student's profile and quiz history, generate the single next question now.`,
 });
 
 const getQuizQuestionFlow = ai.defineFlow(
@@ -122,6 +114,7 @@ const getQuizQuestionFlow = ai.defineFlow(
     outputSchema: QuizQuestionOutputSchema,
   },
   async (input) => {
+    // Map the input to a format the prompt understands better if needed, but the current prompt is flexible.
     const { output } = await prompt(input);
     
     if (!output) {
