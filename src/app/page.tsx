@@ -15,6 +15,7 @@ import {
   Calendar,
   CheckCircle2,
   XCircle,
+  LogIn,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -23,10 +24,15 @@ import type { PersonalizedStreamRecommendationOutput } from "@/ai/flows/personal
 
 const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
 
+type User = {
+  name: string;
+  profilePicture: string;
+};
+
 export default function DashboardPage() {
   const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
   const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
-
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     // Check for saved recommendation in local storage
@@ -42,13 +48,21 @@ export default function DashboardPage() {
     setHasCheckedStorage(true);
   }, []);
 
-  const hasTakenQuiz = !!recommendation;
-
-  const user = {
-    name: "Arjun",
-    profilePicture: "https://picsum.photos/100/100",
-    profileCompletion: hasTakenQuiz ? 65 : 30,
+  const handleLogin = () => {
+    setUser({
+      name: "Arjun",
+      profilePicture: "https://picsum.photos/100/100",
+    });
   };
+
+  const handleLogout = () => {
+    setUser(null);
+  };
+
+  const hasTakenQuiz = !!recommendation;
+  
+  const profileCompletion = user ? (hasTakenQuiz ? 65 : 30) : 0;
+
 
   const featuredResource = {
     title: "Resource Spotlight",
@@ -74,98 +88,126 @@ export default function DashboardPage() {
           
           {/* Header Section */}
           <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
-                <AvatarImage src={user.profilePicture} alt={user.name} />
-                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-              </Avatar>
+             <div className="flex items-center gap-4">
+              {user && (
+                <Avatar className="h-16 w-16">
+                  <AvatarImage src={user.profilePicture} alt={user.name} />
+                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                </Avatar>
+              )}
               <div>
-                <h1 className="text-2xl font-bold font-headline">Welcome back, {user.name}!</h1>
-                <p className="text-muted-foreground">Let's continue charting your path to success.</p>
+                <h1 className="text-2xl font-bold font-headline">
+                  {user ? `Welcome back, ${user.name}!` : "Welcome to Disha Portal!"}
+                </h1>
+                <p className="text-muted-foreground">
+                  {user ? "Let's continue charting your path to success." : "Your compass to a brighter future."}
+                </p>
               </div>
             </div>
+            {user ? (
+              <Button variant="outline" onClick={handleLogout}>Logout</Button>
+            ) : (
+               <Button onClick={handleLogin}><LogIn className="mr-2 h-4 w-4" /> Login</Button>
+            )}
           </div>
 
           {/* Main Call-to-Action Card */}
           <div className="mb-12">
             <Card className="shadow-lg">
               <CardContent className="p-8">
-                <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
-                  <div className="flex-shrink-0">
-                    {hasTakenQuiz ? (
-                      <Compass className="w-20 h-20 text-primary" />
-                    ) : (
-                      <Lightbulb className="w-20 h-20 text-primary" />
-                    )}
+                {!user ? (
+                   <div className="flex flex-col md:flex-row items-center gap-6 text-center">
+                      <div className="flex-shrink-0">
+                        <Compass className="w-20 h-20 text-primary" />
+                      </div>
+                      <div className="flex-grow">
+                        <CardTitle className="text-3xl font-headline mb-2">Discover Your Path</CardTitle>
+                        <CardDescription className="text-lg mb-4">
+                          Login to take our AI-powered assessment, save your progress, and get personalized recommendations.
+                        </CardDescription>
+                         <Button size="lg" onClick={handleLogin}><LogIn className="mr-2 h-5 w-5" /> Login to Continue</Button>
+                      </div>
+                   </div>
+                ) : (
+                  <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                    <div className="flex-shrink-0">
+                      {hasTakenQuiz ? (
+                        <Compass className="w-20 h-20 text-primary" />
+                      ) : (
+                        <Lightbulb className="w-20 h-20 text-primary" />
+                      )}
+                    </div>
+                    <div className="flex-grow">
+                      <CardTitle className="text-3xl font-headline mb-2">
+                        {hasTakenQuiz ? "Your Personalized Report is Ready!" : "Find Your True Calling"}
+                      </CardTitle>
+                      <CardDescription className="text-lg mb-4">
+                        {hasTakenQuiz ? `We recommend the "${recommendation?.recommendation}" path for you. View the full report for more details.` : "Take our comprehensive AI-powered assessment to discover your perfect career path."}
+                      </CardDescription>
+                      <Link href="/quiz" passHref>
+                        <Button size="lg" variant={hasTakenQuiz ? "secondary" : "default"}>
+                          {hasTakenQuiz ? "View My Report" : "Start Your Assessment"}
+                        </Button>
+                      </Link>
+                    </div>
                   </div>
-                  <div className="flex-grow">
-                    <CardTitle className="text-3xl font-headline mb-2">
-                      {hasTakenQuiz ? "Your Personalized Report is Ready!" : "Find Your True Calling"}
-                    </CardTitle>
-                    <CardDescription className="text-lg mb-4">
-                      {hasTakenQuiz ? `We recommend the "${recommendation?.recommendation}" path for you. View the full report for more details.` : "Take our comprehensive AI-powered assessment to discover your perfect career path."}
-                    </CardDescription>
-                    <Link href="/quiz" passHref>
-                      <Button size="lg" variant={hasTakenQuiz ? "secondary" : "default"}>
-                        {hasTakenQuiz ? "View My Report" : "Start Your Assessment"}
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
           {/* "Your Journey" Progress Tracker */}
-          <div className="mb-12">
-            <h2 className="text-2xl font-bold font-headline mb-6">Your Journey So Far</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Complete Profile</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Progress value={user.profileCompletion} className="mb-2" />
-                  <p className="text-sm text-muted-foreground">{user.profileCompletion}% complete</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Take the Quiz</CardTitle>
-                </CardHeader>
-                <CardContent className="flex items-center gap-2">
-                  {hasTakenQuiz ? (
-                    <CheckCircle2 className="w-5 h-5 text-green-500" />
-                  ) : (
-                    <XCircle className="w-5 h-5 text-red-500" />
-                  )}
-                  <span className={hasTakenQuiz ? "text-green-600" : "text-red-600"}>
-                    {hasTakenQuiz ? "Completed" : "Incomplete"}
-                  </span>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Explore Careers</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" asChild>
-                    <Link href="/courses">Explore</Link>
-                  </Button>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Find Colleges</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <Button variant="outline" asChild>
-                    <Link href="/colleges">Explore</Link>
-                  </Button>
-                </CardContent>
-              </Card>
+          {user && (
+            <div className="mb-12">
+              <h2 className="text-2xl font-bold font-headline mb-6">Your Journey So Far</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Complete Profile</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Progress value={profileCompletion} className="mb-2" />
+                    <p className="text-sm text-muted-foreground">{profileCompletion}% complete</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Take the Quiz</CardTitle>
+                  </CardHeader>
+                  <CardContent className="flex items-center gap-2">
+                    {hasTakenQuiz ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-500" />
+                    ) : (
+                      <XCircle className="w-5 h-5 text-red-500" />
+                    )}
+                    <span className={hasTakenQuiz ? "text-green-600" : "text-red-600"}>
+                      {hasTakenQuiz ? "Completed" : "Incomplete"}
+                    </span>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Explore Careers</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Button variant="outline" asChild>
+                      <Link href="/courses">Explore</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Find Colleges</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Button variant="outline" asChild>
+                      <Link href="/colleges">Explore</Link>
+                    </Button>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </div>
+          )}
           
           {/* Quick Links / Feature Grid */}
           <div className="mb-12">
@@ -230,7 +272,7 @@ export default function DashboardPage() {
                 <div className="md:w-2/3">
                   <p className="text-muted-foreground mb-4">{featuredResource.description}</p>
                   <Button asChild>
-                    <Link href={featuredResource.link}>Learn More</Link>
+                    <Link href={'/resources'}>Learn More</Link>
                   </Button>
                 </div>
               </CardContent>

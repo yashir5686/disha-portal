@@ -11,6 +11,7 @@ import {
   Menu,
   School,
   User,
+  BookOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -26,7 +27,7 @@ const navigationItems = [
   { href: "/courses", label: "Courses & Careers", icon: Book },
   { href: "/scholarships", label: "Scholarships", icon: DollarSign },
   { href: "/timeline", label: "Timeline", icon: Calendar },
-  { href: "/resources", label: "Study Resources", icon: Book },
+  { href: "/resources", label: "Study Resources", icon: BookOpen },
   { href: "/profile", label: "Profile", icon: User },
 ];
 
