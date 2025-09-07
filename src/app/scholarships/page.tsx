@@ -1,138 +1,29 @@
+
 "use client";
 import AppLayout from "@/components/layout/AppLayout";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { getScholarships, Scholarship } from "@/ai/flows/get-scholarships";
-import { Badge } from "@/components/ui/badge";
-import { ArrowUpRight, DollarSign } from "lucide-react";
-import { useEffect, useState } from "react";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Construction } from "lucide-react";
 
 export default function ScholarshipsPage() {
-  const [scholarships, setScholarships] = useState<Scholarship[]>([]);
-  const [filteredScholarships, setFilteredScholarships] = useState<Scholarship[]>([]);
-  const [levels, setLevels] = useState<string[]>([]);
-  const [streams, setStreams] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function fetchScholarships() {
-      try {
-        setLoading(true);
-        const scholarshipData = await getScholarships({ query: 'scholarships for Indian students' });
-        setScholarships(scholarshipData.scholarships);
-        setFilteredScholarships(scholarshipData.scholarships);
-        setLevels([...new Set(scholarshipData.scholarships.map(s => s.level))]);
-        setStreams([...new Set(scholarshipData.scholarships.flatMap(s => s.tags).filter(t => ["Science", "Commerce", "Arts", "Vocational"].includes(t)))]);
-      } catch (error) {
-        console.error("Failed to fetch scholarships:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchScholarships();
-  }, []);
-
-  const handleFilterChange = (type: 'level' | 'stream', value: string) => {
-    let results = scholarships;
-    if (value) {
-      if (type === 'level') {
-        results = results.filter(s => s.level === value);
-      }
-      if (type === 'stream') {
-        results = results.filter(s => s.tags.includes(value));
-      }
-    }
-    setFilteredScholarships(results);
-  };
-
-
   return (
     <AppLayout>
       <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8">
         <div className="flex items-center">
-          <h1 className="font-headline text-lg font-semibold md:text-2xl">Scholarship Information</h1>
+          <h1 className="font-headline text-lg font-semibold md:text-2xl">Scholarships</h1>
         </div>
-         <p className="text-muted-foreground">
-          Discover a curated database of Indian scholarships. Filter by level, stream, region, and more.
-        </p>
-
-        <Card>
+        <div className="flex-1 flex items-center justify-center">
+          <Card className="w-full max-w-md text-center py-12">
             <CardHeader>
-                <CardTitle>Filter Scholarships</CardTitle>
+                <Construction className="w-16 h-16 mx-auto text-muted-foreground" />
             </CardHeader>
             <CardContent>
-                <div className="grid md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                        <Label>Education Level</Label>
-                        <Select onValueChange={(value) => handleFilterChange('level', value)}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Filter by level" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="">All Levels</SelectItem>
-                                {levels.map(level => <SelectItem key={level} value={level}>{level}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                     <div className="space-y-2">
-                        <Label>Stream</Label>
-                        <Select onValueChange={(value) => handleFilterChange('stream', value)}>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Filter by stream" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                 <SelectItem value="">All Streams</SelectItem>
-                                {streams.map(stream => <SelectItem key={stream} value={stream}>{stream}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </div>
+                <CardTitle className="text-2xl font-bold">Coming Soon!</CardTitle>
+                <CardDescription className="mt-2">
+                    We're working hard to bring you a comprehensive scholarship finder. Please check back later.
+                </CardDescription>
             </CardContent>
-        </Card>
-
-        {loading ? (
-           <div className="col-span-full text-center py-12">
-              <p className="text-muted-foreground">Loading scholarships...</p>
-            </div>
-        ) : (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredScholarships.map((scholarship, index) => (
-              <Card key={index} className="flex flex-col">
-                <CardHeader>
-                  <CardTitle className="flex items-start gap-2">
-                      <DollarSign className="w-5 h-5 text-primary mt-1 shrink-0" />
-                      <span>{scholarship.name}</span>
-                  </CardTitle>
-                  <CardDescription>By {scholarship.provider}</CardDescription>
-                  <div className="flex flex-wrap gap-2 pt-2">
-                    {scholarship.tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-grow">
-                  <p className="text-sm text-muted-foreground">{scholarship.description}</p>
-                  <div className="mt-4">
-                      <h4 className="font-semibold text-sm">Eligibility</h4>
-                      <p className="text-sm text-muted-foreground">{scholarship.eligibility}</p>
-                  </div>
-                </CardContent>
-                <CardFooter>
-                  <Button asChild className="w-full">
-                    <a href={scholarship.link} target="_blank" rel="noopener noreferrer">
-                      Apply Now <ArrowUpRight className="ml-2 h-4 w-4" />
-                    </a>
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-            {filteredScholarships.length === 0 && (
-              <div className="col-span-full text-center py-12">
-                <p className="text-muted-foreground">No scholarships found matching your criteria.</p>
-              </div>
-            )}
-          </div>
-        )}
+          </Card>
+        </div>
       </main>
     </AppLayout>
   );
