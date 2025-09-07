@@ -289,6 +289,19 @@ export default function QuizPage() {
   
   const currentQuestion = quizState.questions[quizState.currentStep];
 
+  const handleApiError = (err: any, context: 'first_question' | 'next_question' | 'recommendation') => {
+    console.error(`Failed to fetch ${context}:`, err);
+    if (err instanceof Error && err.message.includes('503')) {
+      setError("Our AI service is currently busy. Please wait a moment and try again.");
+    } else if (context === 'first_question') {
+      setError("Could not start the quiz. Please try again later.");
+    } else if (context === 'next_question') {
+      setError("Could not load the next question. Please try again.");
+    } else {
+      setError("We couldn't generate your recommendation. Please try again.");
+    }
+  };
+
   async function fetchFirstQuestion(grade: Grade, stream?: string) {
     setLoading(true);
     setError(null);
@@ -300,8 +313,7 @@ export default function QuizPage() {
        });
       setQuizState(prevState => ({ ...prevState, questions: [firstQuestion], stage: 'quiz', grade, stream }));
     } catch (err) {
-      console.error("Failed to fetch first question:", err);
-      setError("Could not start the quiz. Please try again later.");
+      handleApiError(err, 'first_question');
     } finally {
       setLoading(false);
     }
@@ -323,8 +335,7 @@ export default function QuizPage() {
         currentStep: prevState.currentStep + 1
       }));
     } catch (err) {
-      console.error("Failed to fetch next question:", err);
-      setError("Could not load the next question. Please try again.");
+      handleApiError(err, 'next_question');
     } finally {
       setLoading(false);
     }
@@ -379,8 +390,7 @@ export default function QuizPage() {
       }
       setQuizState(prevState => ({ ...prevState, stage: 'recommendation' }));
     } catch (error) {
-      console.error("Error getting recommendation:", error);
-      setError("We couldn't generate your recommendation. Please try again.");
+      handleApiError(error, 'recommendation');
     } finally {
       setLoadingRecommendation(false);
     }
@@ -738,3 +748,5 @@ export default function QuizPage() {
     </AppLayout>
   );
 }
+
+    
