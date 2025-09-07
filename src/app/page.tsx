@@ -30,6 +30,7 @@ type User = {
   profilePicture: string;
 };
 
+
 export default function DashboardPage() {
   const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
   const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
