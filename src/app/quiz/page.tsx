@@ -264,7 +264,7 @@ export default function QuizPage() {
     questions: [],
     answers: [],
     currentStep: 0,
-    totalQuestions: 14, // Default to "Quick" quiz
+    totalQuestions: 14,
     profileInfo: "",
     stage: 'start',
   });
@@ -289,6 +289,7 @@ export default function QuizPage() {
   const form = useForm();
   
   const currentQuestion = quizState.questions[quizState.currentStep];
+  const isFetchingNextQuestion = quizState.questions.length <= quizState.currentStep + 1;
 
   const handleApiError = (err: any, context: 'first_question' | 'next_question' | 'recommendation') => {
     console.error(`Failed to fetch ${context}:`, err);
@@ -306,49 +307,72 @@ export default function QuizPage() {
     }
     setError(errorMessage);
   };
-
-  async function fetchFirstQuestion(grade: Grade, stream?: string) {
-    setLoading(true);
+  
+  const fetchQuestion = async (isFirst: boolean) => {
+    setLoading(isFirst); // Only show spinner for the very first question
     setError(null);
-    try {
-      const totalQuestions = grade === '10th' ? 14 : 22;
-      const firstQuestion = await getQuizQuestion({ 
-        history: [],
-        grade: grade,
-        stream: stream,
-       });
-      setQuizState(prevState => ({ ...prevState, questions: [firstQuestion], stage: 'quiz', grade, stream, totalQuestions }));
-    } catch (err) {
-      handleApiError(err, 'first_question');
-      setLoading(false); // Ensure loading is false on error
-    } finally {
-      setLoading(false);
-    }
-  }
+    
+    // Determine history based on whether it's the first question or a subsequent one
+    const history = isFirst ? [] : quizState.answers;
+    const grade = quizState.grade!;
+    const stream = quizState.stream;
 
-  async function fetchNextQuestion() {
-    setLoading(true);
-    setError(null);
     try {
-      const nextQuestion = await getQuizQuestion({
-        history: quizState.answers,
-        grade: quizState.grade!,
-        stream: quizState.stream,
-      });
-      form.reset();
+      const newQuestion = await getQuizQuestion({ history, grade, stream });
       setQuizState(prevState => ({
         ...prevState,
-        questions: [...prevState.questions, nextQuestion],
-        currentStep: prevState.currentStep + 1
+        questions: [...prevState.questions, newQuestion],
+        stage: 'quiz', // Ensure stage is set to quiz
       }));
     } catch (err) {
-      handleApiError(err, 'next_question');
+      handleApiError(err, isFirst ? 'first_question' : 'next_question');
+    } finally {
+      if (isFirst) {
+        setLoading(false);
+      }
+    }
+  };
+
+
+  const startAndPrefetch = async (grade: Grade, stream?: string) => {
+    setLoading(true);
+    setError(null);
+    
+    const totalQuestions = grade === '10th' ? 14 : 22;
+    const tempState = { grade, stream, totalQuestions };
+
+    try {
+      // Fetch first question
+      const firstQuestion = await getQuizQuestion({ history: [], grade, stream });
+      
+      setQuizState(prevState => ({
+        ...prevState,
+        ...tempState,
+        questions: [firstQuestion],
+        stage: 'quiz',
+      }));
+
+      // Immediately trigger prefetch for the second question
+      if (totalQuestions > 1) {
+        const secondQuestion = await getQuizQuestion({ history: [{ question: firstQuestion.question, answer: "prefetch" }], grade, stream });
+        setQuizState(prevState => ({
+          ...prevState,
+          questions: [...prevState.questions, secondQuestion],
+        }));
+      }
+
+    } catch (err) {
+      handleApiError(err, 'first_question');
+      setQuizState(prevState => ({ ...prevState, stage: 'start' })); // revert stage on error
     } finally {
       setLoading(false);
     }
-  }
+  };
+
 
   const processAndNext = async (data: any) => {
+    if (isFetchingNextQuestion) return; // Prevent advancing if next question isn't ready
+    
     const rawAnswer = data[currentQuestion.id];
     let answerValue = '';
 
@@ -369,14 +393,19 @@ export default function QuizPage() {
     setQuizState(prevState => ({
       ...prevState,
       answers: newAnswers,
+      currentStep: prevState.currentStep + 1,
     }));
     
-    if (quizState.currentStep >= quizState.totalQuestions - 1) {
-       setQuizState(prevState => ({ ...prevState, currentStep: prevState.currentStep + 1, stage: 'profile' }));
-    } else {
-      await fetchNextQuestion();
+    form.reset();
+
+    const nextStep = quizState.currentStep + 1;
+    if (nextStep >= quizState.totalQuestions) {
+      setQuizState(prevState => ({ ...prevState, stage: 'profile' }));
+    } else if (quizState.questions.length <= nextStep + 1) { // Prefetch if we don't have the *next* next question
+      fetchQuestion(false);
     }
   };
+
 
   const getRecommendation = async (data: any) => {
     setLoadingRecommendation(true);
@@ -408,7 +437,7 @@ export default function QuizPage() {
       if (data.stream === 'Science' && data.scienceGroup) {
           fullStream = `Science (${data.scienceGroup})`;
       }
-      await fetchFirstQuestion(data.grade, fullStream);
+      await startAndPrefetch(data.grade, fullStream);
   }
 
   const restartQuiz = () => {
@@ -434,7 +463,7 @@ export default function QuizPage() {
     if (quizState.questions.length === 0 && quizState.grade) {
       handleStartQuiz(form.getValues());
     } else {
-      fetchNextQuestion();
+      fetchQuestion(false);
     }
   };
   
@@ -628,7 +657,7 @@ export default function QuizPage() {
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
-                ) : error ? (
+                ) : error && !currentQuestion ? (
                    <div className="text-center text-destructive flex flex-col items-center justify-center h-full gap-4">
                       <p>{error}</p>
                       <Button type="button" onClick={retryFetch} variant="outline">
@@ -713,7 +742,7 @@ export default function QuizPage() {
                       </FormItem>
                     )}
                   />
-                ) : (
+                ) : quizState.stage === 'profile' ? (
                   <FormField
                     control={form.control}
                     name="profileInformation"
@@ -735,14 +764,19 @@ export default function QuizPage() {
                       </FormItem>
                     )}
                   />
-                )}
+                 ) : (
+                    <div className="flex items-center justify-center h-full">
+                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    </div>
+                 )
+                }
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button type="button" variant="outline" onClick={prevStep} disabled={loading}>
                   Previous
                 </Button>
-                <Button type="submit" disabled={loading || !!error}>
-                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                <Button type="submit" disabled={isFetchingNextQuestion && quizState.stage === 'quiz'}>
+                  {isFetchingNextQuestion && quizState.stage === 'quiz' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   {quizState.stage === 'profile' ? 'Get Recommendation' : 'Next'}
                 </Button>
               </CardFooter>
@@ -762,5 +796,3 @@ export default function QuizPage() {
     </AppLayout>
   );
 }
-
-    
