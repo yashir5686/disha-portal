@@ -25,7 +25,7 @@ const PersonalizedStreamRecommendationInputSchema = z.object({
       'A summary of the users background, interests, aptitude and academic information'
     ),
   grade: z.enum(['10th', '12th']).describe("The user's current grade level."),
-  stream: z.string().optional().describe('The student\'s stream if they are in 12th grade (e.g., Science, Commerce, Arts).'),
+  stream: z.string().optional().describe('The student\'s stream if they are in 12th grade (e.g., "Science (PCM)", "Commerce", "Arts").'),
 });
 export type PersonalizedStreamRecommendationInput = z.infer<
   typeof PersonalizedStreamRecommendationInputSchema
@@ -66,7 +66,7 @@ const RecommendationSchema = z.object({
   recommendation: z
     .string()
     .describe(
-      'The primary recommended stream (for 10th grade) or a specific degree/career field (for 12th grade).'
+      'The primary recommended stream (for 10th grade) or a specific degree/career field (for 12th grade). For 10th grade science, specify PCM, PCB or PCMB.'
     ),
   reasoning: z
     .string()
@@ -96,6 +96,9 @@ const prompt = ai.definePrompt({
   prompt: `You are an expert career counselor in India. Your task is to provide a detailed, actionable, and personalized recommendation based on a student's grade, quiz results, and profile.
 
 Student Grade: {{{grade}}}
+{{#if stream}}
+Student Stream: {{{stream}}}
+{{/if}}
 
 Quiz Results:
 {{#each quizResults}}
@@ -112,8 +115,8 @@ Based on all the provided information, generate a comprehensive and personalized
 1.  **Analyze Interests**: First, analyze the quiz answers to identify the student's core interests. Map them to 3-4 interest areas (using a framework like RIASEC: Realistic, Investigative, Artistic, Social, Enterprising, Conventional, but simplified). For each area, provide a score (0-100) and a brief summary. This will form the \`interestAnalysis\`.
 
 2.  **Main Recommendation**:
-    *   If the student is in **10th Grade**: Recommend the most suitable stream (Science, Commerce, Arts, or Vocational).
-    *   If the student is in **12th Grade** (stream: {{{stream}}}): Suggest a specific and suitable career field or broad degree category (e.g., "AI & Machine Learning", "Corporate Finance", "Digital Media").
+    *   If the student is in **10th Grade**: Recommend the most suitable stream (Science, Commerce, Arts, or Vocational). If the recommendation is Science, you MUST also specify whether the student should opt for PCM, PCB, or PCMB based on their quiz answers (e.g., "Science - PCM").
+    *   If the student is in **12th Grade**: Suggest a specific and suitable career field or broad degree category (e.g., "AI & Machine Learning", "Corporate Finance", "Digital Media") based on their stream: {{{stream}}}.
     *   Set the \`recommendationTitle\` and \`recommendation\` fields accordingly.
 
 3.  **Reasoning**: Provide a narrative summary in the \`reasoning\` field. Explain *why* this recommendation is a good fit, connecting their interest analysis, quiz answers, and profile information in a cohesive story.

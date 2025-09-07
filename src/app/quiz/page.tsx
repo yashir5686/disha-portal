@@ -289,17 +289,16 @@ export default function QuizPage() {
   
   const currentQuestion = quizState.questions[quizState.currentStep];
 
-  async function fetchFirstQuestion() {
-    if (!quizState.grade) return;
+  async function fetchFirstQuestion(grade: Grade, stream?: string) {
     setLoading(true);
     setError(null);
     try {
       const firstQuestion = await getQuizQuestion({ 
         history: [],
-        grade: quizState.grade,
-        stream: quizState.stream,
+        grade: grade,
+        stream: stream,
        });
-      setQuizState(prevState => ({ ...prevState, questions: [firstQuestion], stage: 'quiz' }));
+      setQuizState(prevState => ({ ...prevState, questions: [firstQuestion], stage: 'quiz', grade, stream }));
     } catch (err) {
       console.error("Failed to fetch first question:", err);
       setError("Could not start the quiz. Please try again later.");
@@ -388,12 +387,11 @@ export default function QuizPage() {
   };
   
   const handleStartQuiz = (data: any) => {
-      setQuizState(prevState => ({
-          ...prevState,
-          grade: data.grade,
-          stream: data.stream,
-      }));
-      fetchFirstQuestion();
+      let fullStream = data.stream;
+      if (data.stream === 'Science' && data.scienceGroup) {
+          fullStream = `Science (${data.scienceGroup})`;
+      }
+      fetchFirstQuestion(data.grade, fullStream);
   }
 
   const restartQuiz = () => {
@@ -415,8 +413,8 @@ export default function QuizPage() {
 
   const retryFetch = () => {
     setError(null);
-    if (quizState.questions.length === 0) {
-      fetchFirstQuestion();
+    if (quizState.questions.length === 0 && quizState.grade) {
+      fetchFirstQuestion(quizState.grade, quizState.stream);
     } else {
       fetchNextQuestion();
     }
@@ -492,7 +490,8 @@ export default function QuizPage() {
                                     <RadioGroup
                                     onValueChange={(value) => {
                                         field.onChange(value);
-                                        form.setValue('stream', undefined); // Reset stream when grade changes
+                                        form.setValue('stream', undefined); 
+                                        form.setValue('scienceGroup', undefined);
                                     }}
                                     defaultValue={field.value}
                                     className="flex flex-col space-y-1"
@@ -523,7 +522,10 @@ export default function QuizPage() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="font-semibold text-base">Which stream did you study in 12th grade?</FormLabel>
-                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <Select onValueChange={(value) => {
+                                        field.onChange(value);
+                                        form.setValue('scienceGroup', undefined);
+                                    }} defaultValue={field.value}>
                                     <FormControl>
                                         <SelectTrigger>
                                         <SelectValue placeholder="Select your stream" />
@@ -540,6 +542,39 @@ export default function QuizPage() {
                                 </FormItem>
                             )}
                          />
+                    )}
+                    {form.watch('stream') === 'Science' && form.watch('grade') === '12th' && (
+                        <FormField
+                            control={form.control}
+                            name="scienceGroup"
+                            rules={{ required: "Please select your science group." }}
+                            render={({ field }) => (
+                                <FormItem className="space-y-3">
+                                    <FormLabel className="font-semibold text-base">Which group did you take in Science?</FormLabel>
+                                    <FormControl>
+                                        <RadioGroup
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value}
+                                            className="flex flex-col space-y-1"
+                                        >
+                                            <FormItem className="flex items-center space-x-3 space-y-0">
+                                                <FormControl><RadioGroupItem value="PCM" /></FormControl>
+                                                <FormLabel className="font-normal">PCM (Physics, Chemistry, Maths)</FormLabel>
+                                            </FormItem>
+                                            <FormItem className="flex items-center space-x-3 space-y-0">
+                                                <FormControl><RadioGroupItem value="PCB" /></FormControl>
+                                                <FormLabel className="font-normal">PCB (Physics, Chemistry, Biology)</FormLabel>
+                                            </FormItem>
+                                            <FormItem className="flex items-center space-x-3 space-y-0">
+                                                <FormControl><RadioGroupItem value="PCMB" /></FormControl>
+                                                <FormLabel className="font-normal">PCMB (Both)</FormLabel>
+                                            </FormItem>
+                                        </RadioGroup>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     )}
                 </CardContent>
                  <CardFooter>

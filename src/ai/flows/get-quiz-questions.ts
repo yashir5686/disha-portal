@@ -11,7 +11,6 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { v4 as uuidv4 } from 'uuid';
-import type { Grade } from './personalized-stream-recommendation-from-quiz';
 
 // Schemas for the questions
 const BaseQuestionSchema = z.object({
@@ -45,7 +44,7 @@ export type QuizQuestion = z.infer<typeof QuizQuestionOutputSchema>;
 
 const QuizQuestionInputSchema = z.object({
   grade: z.enum(['10th', '12th']),
-  stream: z.string().optional().describe('The student\'s stream if they are in 12th grade (e.g., Science, Commerce, Arts).'),
+  stream: z.string().optional().describe('The student\'s stream if they are in 12th grade (e.g., "Science (PCM)", "Commerce", "Arts").'),
   history: z.array(z.object({
     question: z.string(),
     answer: z.string()
