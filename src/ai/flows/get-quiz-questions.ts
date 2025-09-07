@@ -152,7 +152,7 @@ const getQuizQuestionFlow = ai.defineFlow(
     // Add unique IDs to the output
     output.id = uuidv4();
     if ('options' in output && output.options) {
-      output.options.forEach(o => o.id = uuidvv4());
+      output.options.forEach(o => o.id = uuidv4());
     }
     
     return output;
