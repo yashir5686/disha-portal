@@ -28,7 +28,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Lightbulb, Sparkles, BrainCircuit } from "lucide-react";
+import { Loader2, Lightbulb, Sparkles, BrainCircuit, RefreshCw } from "lucide-react";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
 
@@ -56,24 +56,46 @@ export default function QuizPage() {
   const form = useForm();
 
   // Fetch initial question
-  useEffect(() => {
-    async function fetchFirstQuestion() {
-      setLoading(true);
-      setError(null);
-      try {
-        const firstQuestion = await getQuizQuestion({ history: [] });
-        setQuizState(prevState => ({ ...prevState, questions: [firstQuestion] }));
-      } catch (err) {
-        console.error("Failed to fetch first question:", err);
-        setError("Could not start the quiz. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
+  async function fetchFirstQuestion() {
+    setLoading(true);
+    setError(null);
+    try {
+      const firstQuestion = await getQuizQuestion({ history: [] });
+      setQuizState(prevState => ({ ...prevState, questions: [firstQuestion] }));
+    } catch (err) {
+      console.error("Failed to fetch first question:", err);
+      setError("Could not start the quiz. Please try again later.");
+    } finally {
+      setLoading(false);
     }
-    fetchFirstQuestion();
-  }, []);
+  }
 
+  useEffect(() => {
+    if (quizState.questions.length === 0 && quizState.currentStep === 0) {
+      fetchFirstQuestion();
+    }
+  }, []);
+  
   const currentQuestion = quizState.questions[quizState.currentStep];
+
+  async function fetchNextQuestion() {
+    setLoading(true);
+    setError(null);
+    try {
+      const nextQuestion = await getQuizQuestion({ history: quizState.answers });
+      form.reset();
+      setQuizState(prevState => ({
+        ...prevState,
+        questions: [...prevState.questions, nextQuestion],
+        currentStep: prevState.currentStep + 1
+      }));
+    } catch (err) {
+      console.error("Failed to fetch next question:", err);
+      setError("Could not load the next question. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const processAndNext = async (data: any) => {
     const answerId = data[currentQuestion.id];
@@ -93,22 +115,7 @@ export default function QuizPage() {
     if (quizState.currentStep >= TOTAL_QUESTIONS - 1) {
        setQuizState(prevState => ({ ...prevState, currentStep: prevState.currentStep + 1 }));
     } else {
-      setLoading(true);
-      setError(null);
-      try {
-        const nextQuestion = await getQuizQuestion({ history: newAnswers });
-        form.reset();
-        setQuizState(prevState => ({
-          ...prevState,
-          questions: [...prevState.questions, nextQuestion],
-          currentStep: prevState.currentStep + 1
-        }));
-      } catch (err) {
-        console.error("Failed to fetch next question:", err);
-        setError("Could not load the next question. Please try again.");
-      } finally {
-        setLoading(false);
-      }
+      await fetchNextQuestion();
     }
   };
 
@@ -141,19 +148,16 @@ export default function QuizPage() {
     setError(null);
     setLoading(true);
     // Refetch the first question
-    async function fetchFirstQuestion() {
-      try {
-        const firstQuestion = await getQuizQuestion({ history: [] });
-        setQuizState(prevState => ({ ...prevState, questions: [firstQuestion] }));
-      } catch (err) {
-        console.error("Failed to fetch first question:", err);
-        setError("Could not restart the quiz. Please try again later.");
-      } finally {
-        setLoading(false);
-      }
-    }
     fetchFirstQuestion();
     form.reset();
+  };
+
+  const retryFetch = () => {
+    if (quizState.questions.length === 0) {
+      fetchFirstQuestion();
+    } else {
+      fetchNextQuestion();
+    }
   };
   
   const prevStep = () => {
@@ -240,7 +244,13 @@ export default function QuizPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : error ? (
-                   <div className="text-destructive text-center">{error}</div>
+                   <div className="text-center text-destructive flex flex-col items-center justify-center h-full gap-4">
+                      <p>{error}</p>
+                      <Button type="button" onClick={retryFetch} variant="outline">
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        Retry
+                      </Button>
+                    </div>
                 ) : currentQuestion && quizState.currentStep < TOTAL_QUESTIONS ? (
                   <FormField
                     control={form.control}
@@ -321,7 +331,7 @@ export default function QuizPage() {
                 <Button type="button" variant="outline" onClick={prevStep} disabled={quizState.currentStep === 0}>
                   Previous
                 </Button>
-                <Button type="submit" disabled={loading}>
+                <Button type="submit" disabled={loading || !!error}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                   {quizState.currentStep >= TOTAL_QUESTIONS ? 'Get Recommendation' : 'Next'}
                 </Button>
