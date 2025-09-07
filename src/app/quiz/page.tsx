@@ -40,7 +40,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Loader2, Lightbulb, Sparkles, BrainCircuit, RefreshCw, Briefcase, GraduationCap, Building, Search,ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -72,7 +72,7 @@ function RecommendationResult({ recommendation, onRestart }: { recommendation: P
   const [examDetails, setExamDetails] = useState<ExamDetailsState>({});
 
   const fetchExamDetails = async (examName: string) => {
-    if (examDetails[examName]?.data) return; // Already fetched
+    if (examDetails[examName]?.data || examDetails[examName]?.loading) return;
 
     setExamDetails(prev => ({
       ...prev,
@@ -380,6 +380,8 @@ export default function QuizPage() {
       currentStep: 0,
       profileInfo: "",
       stage: 'start',
+      grade: undefined,
+      stream: undefined,
     });
     setRecommendation(null);
     setError(null);
@@ -632,7 +634,7 @@ export default function QuizPage() {
                   <FormField
                     control={form.control}
                     name="profileInformation"
-                    rules={{ minLength: { value: 30, message: "Please tell us a bit more about yourself (at least 30 characters)." } }}
+                    rules={{ required: "Please tell us a bit more about yourself.", minLength: { value: 30, message: "Please tell us a bit more about yourself (at least 30 characters)." } }}
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel className="text-xl font-semibold text-center block">Almost there! Tell us about yourself.</FormLabel>
@@ -677,3 +679,5 @@ export default function QuizPage() {
     </AppLayout>
   );
 }
+
+    
