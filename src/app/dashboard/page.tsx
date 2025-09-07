@@ -25,6 +25,8 @@ const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
 
 export default function DashboardPage() {
   const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
+  const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
+
 
   useEffect(() => {
     // Check for saved recommendation in local storage
@@ -37,6 +39,7 @@ export default function DashboardPage() {
         localStorage.removeItem(RECOMMENDATION_STORAGE_KEY);
       }
     }
+    setHasCheckedStorage(true);
   }, []);
 
   const hasTakenQuiz = !!recommendation;
@@ -53,10 +56,20 @@ export default function DashboardPage() {
     image: "https://picsum.photos/600/400",
     link: "#"
   };
+  
+  if (!hasCheckedStorage) {
+    return (
+        <AppLayout>
+            <main className="flex flex-1 items-center justify-center">
+                {/* Optional: Add a loading spinner here */}
+            </main>
+        </AppLayout>
+    )
+  }
 
   return (
     <AppLayout>
-      <main>
+      <main className="flex-1 overflow-y-auto">
         <div className="container mx-auto px-4 py-8">
           
           {/* Header Section */}
@@ -90,7 +103,7 @@ export default function DashboardPage() {
                       {hasTakenQuiz ? "Your Personalized Report is Ready!" : "Find Your True Calling"}
                     </CardTitle>
                     <CardDescription className="text-lg mb-4">
-                      {hasTakenQuiz ? "Revisit your detailed career recommendations, college suggestions, and more." : "Take our comprehensive AI-powered assessment to discover your perfect career path."}
+                      {hasTakenQuiz ? `We recommend the "${recommendation?.recommendation}" path for you. View the full report for more details.` : "Take our comprehensive AI-powered assessment to discover your perfect career path."}
                     </CardDescription>
                     <Link href="/quiz" passHref>
                       <Button size="lg" variant={hasTakenQuiz ? "secondary" : "default"}>
