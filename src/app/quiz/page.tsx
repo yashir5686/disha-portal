@@ -45,7 +45,6 @@ import { Loader2, Lightbulb, Sparkles, BrainCircuit, RefreshCw, Briefcase, Gradu
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 
-const TOTAL_QUESTIONS = 5;
 const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
 
 type QuizStage = 'start' | 'quiz' | 'profile' | 'recommendation';
@@ -54,6 +53,7 @@ type QuizState = {
   questions: QuizQuestion[];
   answers: { question: string; answer: string }[];
   currentStep: number;
+  totalQuestions: number;
   profileInfo: string;
   stage: QuizStage;
   grade?: Grade;
@@ -264,6 +264,7 @@ export default function QuizPage() {
     questions: [],
     answers: [],
     currentStep: 0,
+    totalQuestions: 14, // Default to "Quick" quiz
     profileInfo: "",
     stage: 'start',
   });
@@ -310,14 +311,16 @@ export default function QuizPage() {
     setLoading(true);
     setError(null);
     try {
+      const totalQuestions = grade === '10th' ? 14 : 22;
       const firstQuestion = await getQuizQuestion({ 
         history: [],
         grade: grade,
         stream: stream,
        });
-      setQuizState(prevState => ({ ...prevState, questions: [firstQuestion], stage: 'quiz', grade, stream }));
+      setQuizState(prevState => ({ ...prevState, questions: [firstQuestion], stage: 'quiz', grade, stream, totalQuestions }));
     } catch (err) {
       handleApiError(err, 'first_question');
+      setLoading(false); // Ensure loading is false on error
     } finally {
       setLoading(false);
     }
@@ -368,7 +371,7 @@ export default function QuizPage() {
       answers: newAnswers,
     }));
     
-    if (quizState.currentStep >= TOTAL_QUESTIONS - 1) {
+    if (quizState.currentStep >= quizState.totalQuestions - 1) {
        setQuizState(prevState => ({ ...prevState, currentStep: prevState.currentStep + 1, stage: 'profile' }));
     } else {
       await fetchNextQuestion();
@@ -414,6 +417,7 @@ export default function QuizPage() {
       questions: [],
       answers: [],
       currentStep: 0,
+      totalQuestions: 14,
       profileInfo: "",
       stage: 'start',
       grade: undefined,
@@ -428,7 +432,7 @@ export default function QuizPage() {
   const retryFetch = () => {
     setError(null);
     if (quizState.questions.length === 0 && quizState.grade) {
-      fetchFirstQuestion(quizState.grade, quizState.stream);
+      handleStartQuiz(form.getValues());
     } else {
       fetchNextQuestion();
     }
@@ -439,7 +443,7 @@ export default function QuizPage() {
         setQuizState(prevState => ({
             ...prevState,
             stage: 'quiz',
-            currentStep: TOTAL_QUESTIONS - 1
+            currentStep: quizState.totalQuestions - 1
         }))
         return;
      }
@@ -458,7 +462,7 @@ export default function QuizPage() {
      }
   }
 
-  const progressValue = (quizState.currentStep / TOTAL_QUESTIONS) * 100;
+  const progressValue = (quizState.currentStep / quizState.totalQuestions) * 100;
   
   const renderContent = () => {
     if (loadingRecommendation) {
@@ -614,7 +618,7 @@ export default function QuizPage() {
                 {quizState.stage === 'quiz' && (
                     <>
                     <Progress value={progressValue} className="mt-4" />
-                    <p className="text-sm text-muted-foreground text-center pt-2">Question {quizState.currentStep + 1} of {TOTAL_QUESTIONS}</p>
+                    <p className="text-sm text-muted-foreground text-center pt-2">Question {quizState.currentStep + 1} of {quizState.totalQuestions}</p>
                     </>
                 )}
             </CardHeader>
@@ -758,3 +762,5 @@ export default function QuizPage() {
     </AppLayout>
   );
 }
+
+    
