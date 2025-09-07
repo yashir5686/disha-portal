@@ -1,130 +1,243 @@
 
 "use client";
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Compass, BookOpen, School, Award, ArrowRight, UserPlus } from "lucide-react";
 import AppLayout from "@/components/layout/AppLayout";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Progress } from "@/components/ui/progress";
+import {
+  Lightbulb,
+  Compass,
+  School,
+  BookOpen,
+  Award,
+  Calendar,
+  CheckCircle2,
+  XCircle,
+} from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
+import { useEffect, useState } from "react";
+import type { PersonalizedStreamRecommendationOutput } from "@/ai/flows/personalized-stream-recommendation-from-quiz";
+
+const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
+
+export default function DashboardPage() {
+  const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
+  const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
 
 
-export default function HomePage() {
+  useEffect(() => {
+    // Check for saved recommendation in local storage
+    const savedRecommendation = localStorage.getItem(RECOMMENDATION_STORAGE_KEY);
+    if (savedRecommendation) {
+      try {
+        setRecommendation(JSON.parse(savedRecommendation));
+      } catch (e) {
+        console.error("Failed to parse recommendation from localStorage", e);
+        localStorage.removeItem(RECOMMENDATION_STORAGE_KEY);
+      }
+    }
+    setHasCheckedStorage(true);
+  }, []);
+
+  const hasTakenQuiz = !!recommendation;
+
+  const user = {
+    name: "Arjun",
+    profilePicture: "https://picsum.photos/100/100",
+    profileCompletion: hasTakenQuiz ? 65 : 30,
+  };
+
+  const featuredResource = {
+    title: "Resource Spotlight",
+    description: "Discover a new study resource, an upcoming exam, or an interesting career fact to keep you engaged.",
+    image: "https://picsum.photos/600/400",
+    link: "#"
+  };
+  
+  if (!hasCheckedStorage) {
+    return (
+        <AppLayout>
+            <main className="flex flex-1 items-center justify-center">
+                {/* Optional: Add a loading spinner here */}
+            </main>
+        </AppLayout>
+    )
+  }
+
   return (
     <AppLayout>
-      <main>
-        {/* Hero Section */}
-        <section className="bg-gradient-to-b from-primary/10 via-background to-background text-center py-20 px-4">
-          <Compass className="mx-auto h-16 w-16 text-primary mb-4"/>
-          <h1 className="text-4xl md:text-5xl font-bold font-headline max-w-3xl mx-auto">
-            Your Compass to a Brighter Future
-          </h1>
-          <p className="mt-4 text-lg text-muted-foreground max-w-2xl mx-auto">
-            Disha Portal uses AI to understand your unique strengths and interests, guiding you to the perfect career and educational path in India.
-          </p>
-          <div className="mt-8 flex gap-4 justify-center">
-            <Link href="/quiz">
-              <Button size="lg">
-                Start Your Free Assessment <ArrowRight className="ml-2" />
-              </Button>
-            </Link>
-            <Link href="/profile">
-               <Button size="lg" variant="outline">
-                Create Your Profile <UserPlus className="ml-2" />
-               </Button>
-            </Link>
-          </div>
-        </section>
-
-        {/* How It Works Section */}
-        <section className="py-16 bg-background">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-10 font-headline">How It Works: Your Path in 3 Steps</h2>
-            <div className="grid md:grid-cols-3 gap-8 text-center">
-              <div className="flex flex-col items-center">
-                <div className="flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4 ring-4 ring-primary/20">
-                  <div className="text-2xl font-bold text-primary">1</div>
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Discover</h3>
-                <p className="text-muted-foreground">Take our insightful AI-driven quiz to uncover your passions and aptitudes.</p>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4 ring-4 ring-primary/20">
-                  <div className="text-2xl font-bold text-primary">2</div>
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Plan</h3>
-                <p className="text-muted-foreground">Receive a personalized roadmap with career, course, and college recommendations.</p>
-              </div>
-              <div className="flex flex-col items-center">
-                <div className="flex items-center justify-center h-20 w-20 rounded-full bg-primary/10 mb-4 ring-4 ring-primary/20">
-                  <div className="text-2xl font-bold text-primary">3</div>
-                </div>
-                <h3 className="text-xl font-semibold mb-2">Succeed</h3>
-                <p className="text-muted-foreground">Explore resources, track deadlines, and find scholarships to achieve your goals.</p>
+      <main className="flex-1 overflow-y-auto">
+        <div className="container mx-auto px-4 py-8">
+          
+          {/* Header Section */}
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <Avatar className="h-16 w-16">
+                <AvatarImage src={user.profilePicture} alt={user.name} />
+                <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+              </Avatar>
+              <div>
+                <h1 className="text-2xl font-bold font-headline">Welcome back, {user.name}!</h1>
+                <p className="text-muted-foreground">Let's continue charting your path to success.</p>
               </div>
             </div>
           </div>
-        </section>
 
-        {/* Features Section */}
-        <section className="py-16 bg-muted/30">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-10 font-headline">Everything You Need to Succeed</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-              <Link href="/quiz" className="block group">
-                 <Card className="h-full hover:border-primary hover:shadow-lg transition-all">
-                  <CardHeader className="p-6">
-                    <Compass className="h-10 w-10 text-primary mb-3"/>
-                    <CardTitle>AI Recommendation Quiz</CardTitle>
-                    <CardDescription>Our core feature. Get a personalized report in minutes.</CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-              <Link href="/courses" className="block group">
-                <Card className="h-full hover:border-primary hover:shadow-lg transition-all">
-                  <CardHeader className="p-6">
-                    <BookOpen className="h-10 w-10 text-primary mb-3"/>
-                    <CardTitle>Career & Course Maps</CardTitle>
-                    <CardDescription>Understand how degrees connect to real-world job opportunities.</CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-              <Link href="/colleges" className="block group">
-                 <Card className="h-full hover:border-primary hover:shadow-lg transition-all">
-                  <CardHeader className="p-6">
-                    <School className="h-10 w-10 text-primary mb-3"/>
+          {/* Main Call-to-Action Card */}
+          <div className="mb-12">
+            <Card className="shadow-lg">
+              <CardContent className="p-8">
+                <div className="flex flex-col md:flex-row items-center gap-6 text-center md:text-left">
+                  <div className="flex-shrink-0">
+                    {hasTakenQuiz ? (
+                      <Compass className="w-20 h-20 text-primary" />
+                    ) : (
+                      <Lightbulb className="w-20 h-20 text-primary" />
+                    )}
+                  </div>
+                  <div className="flex-grow">
+                    <CardTitle className="text-3xl font-headline mb-2">
+                      {hasTakenQuiz ? "Your Personalized Report is Ready!" : "Find Your True Calling"}
+                    </CardTitle>
+                    <CardDescription className="text-lg mb-4">
+                      {hasTakenQuiz ? `We recommend the "${recommendation?.recommendation}" path for you. View the full report for more details.` : "Take our comprehensive AI-powered assessment to discover your perfect career path."}
+                    </CardDescription>
+                    <Link href="/quiz" passHref>
+                      <Button size="lg" variant={hasTakenQuiz ? "secondary" : "default"}>
+                        {hasTakenQuiz ? "View My Report" : "Start Your Assessment"}
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* "Your Journey" Progress Tracker */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold font-headline mb-6">Your Journey So Far</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Complete Profile</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Progress value={user.profileCompletion} className="mb-2" />
+                  <p className="text-sm text-muted-foreground">{user.profileCompletion}% complete</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Take the Quiz</CardTitle>
+                </CardHeader>
+                <CardContent className="flex items-center gap-2">
+                  {hasTakenQuiz ? (
+                    <CheckCircle2 className="w-5 h-5 text-green-500" />
+                  ) : (
+                    <XCircle className="w-5 h-5 text-red-500" />
+                  )}
+                  <span className={hasTakenQuiz ? "text-green-600" : "text-red-600"}>
+                    {hasTakenQuiz ? "Completed" : "Incomplete"}
+                  </span>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Explore Careers</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" asChild>
+                    <Link href="/courses">Explore</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Find Colleges</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button variant="outline" asChild>
+                    <Link href="/colleges">Explore</Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+          
+          {/* Quick Links / Feature Grid */}
+          <div className="mb-12">
+            <h2 className="text-2xl font-bold font-headline mb-6">Quick Links</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <Link href="/colleges" className="block">
+                <Card className="h-full hover:border-primary transition-colors">
+                  <CardHeader>
+                    <School className="w-8 h-8 text-primary mb-2"/>
                     <CardTitle>College Explorer</CardTitle>
-                    <CardDescription>Search our database of government colleges across India.</CardDescription>
+                    <CardDescription>Find government colleges.</CardDescription>
                   </CardHeader>
                 </Card>
               </Link>
-              <Link href="/scholarships" className="block group">
-                <Card className="h-full hover:border-primary hover:shadow-lg transition-all">
-                  <CardHeader className="p-6">
-                    <Award className="h-10 w-10 text-primary mb-3"/>
+              <Link href="/courses" className="block">
+                <Card className="h-full hover:border-primary transition-colors">
+                  <CardHeader>
+                    <BookOpen className="w-8 h-8 text-primary mb-2"/>
+                    <CardTitle>Career & Course Map</CardTitle>
+                    <CardDescription>See where degrees lead.</CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+              <Link href="/scholarships" className="block">
+                <Card className="h-full hover:border-primary transition-colors">
+                  <CardHeader>
+                    <Award className="w-8 h-8 text-primary mb-2"/>
                     <CardTitle>Scholarship Finder</CardTitle>
-                    <CardDescription>Discover financial aid opportunities to fund your education.</CardDescription>
+                    <CardDescription>Get financial aid info.</CardDescription>
+                  </CardHeader>
+                </Card>
+              </Link>
+              <Link href="/timeline" className="block">
+                <Card className="h-full hover:border-primary transition-colors">
+                  <CardHeader>
+                    <Calendar className="w-8 h-8 text-primary mb-2"/>
+                    <CardTitle>Important Timelines</CardTitle>
+                    <CardDescription>Track key application dates.</CardDescription>
                   </CardHeader>
                 </Card>
               </Link>
             </div>
           </div>
-        </section>
-
-        {/* Final CTA */}
-        <section className="py-20">
-          <div className="container mx-auto px-4 text-center">
-             <h2 className="text-3xl font-bold font-headline">Ready to find your direction?</h2>
-             <p className="mt-2 text-muted-foreground">Let's build your future, together.</p>
-             <div className="mt-6">
-                <Link href="/quiz">
-                    <Button size="lg">Take the First Step <ArrowRight className="ml-2" /></Button>
-                </Link>
-             </div>
+          
+          {/* "Did You Know?" or "Resource Spotlight" Section */}
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>{featuredResource.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex flex-col md:flex-row gap-6">
+                <div className="md:w-1/3">
+                  <Image 
+                    src={featuredResource.image} 
+                    alt={featuredResource.title} 
+                    width={600}
+                    height={400}
+                    data-ai-hint="books studying"
+                    className="rounded-lg object-cover"
+                  />
+                </div>
+                <div className="md:w-2/3">
+                  <p className="text-muted-foreground mb-4">{featuredResource.description}</p>
+                  <Button asChild>
+                    <Link href={featuredResource.link}>Learn More</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        </section>
+        </div>
       </main>
     </AppLayout>
   );
 }
-
-    
