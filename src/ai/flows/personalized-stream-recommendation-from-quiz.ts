@@ -77,17 +77,17 @@ Based on all the provided information, generate a personalized recommendation. A
 
 {{#if (eq grade '10th')}}
   **For a 10th Grade Student:**
-  1.  **`recommendationTitle`**: Set this to "Recommended Stream".
-  2.  **`recommendation`**: Recommend the most suitable stream for 11th/12th grade (Science, Commerce, Arts, or Vocational).
-  3.  **`reasoning`**:
+  1.  **\`recommendationTitle\`**: Set this to "Recommended Stream".
+  2.  **\`recommendation\`**: Recommend the most suitable stream for 11th/12th grade (Science, Commerce, Arts, or Vocational).
+  3.  **\`reasoning\`**:
       *   Provide a detailed explanation for why this stream is recommended, linking back to their quiz answers and profile.
       *   Suggest 2-3 potential degree paths they could pursue after 12th in this stream (e.g., B.Tech, B.Com, B.A. in Psychology).
       *   Mention 2-3 exciting future job roles related to those degrees (e.g., Software Engineer, Chartered Accountant, Clinical Psychologist).
 {{else}}
   **For a 12th Grade Student from the {{{stream}}} stream:**
-  1.  **`recommendationTitle`**: Set this to "Recommended Career Path".
-  2.  **`recommendation`**: Suggest a specific and suitable degree or course to pursue after 12th grade (e.g., "Bachelor of Technology in AI & ML", "Chartered Accountancy (CA)", "B.A. in Journalism & Mass Communication").
-  3.  **`reasoning`**:
+  1.  **\`recommendationTitle\`**: Set this to "Recommended Career Path".
+  2.  **\`recommendation\`**: Suggest a specific and suitable degree or course to pursue after 12th grade (e.g., "Bachelor of Technology in AI & ML", "Chartered Accountancy (CA)", "B.A. in Journalism & Mass Communication").
+  3.  **\`reasoning\`**:
       *   Provide a detailed explanation for your recommendation, connecting it to their chosen stream, quiz answers, and profile information.
       *   Describe the future potential of this career path, including job prospects and growth opportunities in the Indian market.
       *   Suggest 1-2 related higher education options or specializations they could consider later.
