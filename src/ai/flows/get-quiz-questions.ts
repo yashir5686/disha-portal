@@ -66,19 +66,18 @@ const prompt = ai.definePrompt({
   prompt: `You are a career counseling expert designing an adaptive quiz for students in India to recommend a career path.
 
 The student is in grade: {{{grade}}}.
-{{#if stream}}The student's stream is: {{{stream}}}.{{/if}}
+{{#if stream}}
+The student's stream is: {{{stream}}}.
+The goal is to recommend specific degree courses and career paths after 12th grade, based on their chosen stream: {{{stream}}}. The questions should be more focused on their stream-specific interests and skills.
+{{else}}
+The goal is to recommend a stream (Science, Commerce, Arts, Vocational) for 11th/12th grade. The questions should be broad to assess foundational interests and aptitudes.
+{{/if}}
 
 Generate the NEXT quiz question based on this context and the conversation history. The quiz should have a good mix of question types (single-choice, multiple-choice).
 - The quiz will be around 5-7 questions long.
 - Use the provided history of previous answers to make the next question more relevant and insightful.
 - Vary the question format. Sometimes ask about preferences, sometimes about problem-solving styles, sometimes about ideal work environments.
 - Questions should be designed to uncover the student's underlying interests, personality, and aptitudes, mapping to frameworks like RIASEC (Realistic, Investigative, Artistic, Social, Enterprising, Conventional) without mentioning the framework directly.
-
-{{#if (eq grade '10th')}}
-The goal is to recommend a stream (Science, Commerce, Arts, Vocational) for 11th/12th grade. The questions should be broad to assess foundational interests and aptitudes.
-{{else}}
-The goal is to recommend specific degree courses and career paths after 12th grade, based on their chosen stream: {{{stream}}}. The questions should be more focused on their stream-specific interests and skills.
-{{/if}}
 
 Conversation History:
 {{#if history}}
