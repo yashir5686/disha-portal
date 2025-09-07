@@ -291,15 +291,19 @@ export default function QuizPage() {
 
   const handleApiError = (err: any, context: 'first_question' | 'next_question' | 'recommendation') => {
     console.error(`Failed to fetch ${context}:`, err);
-    if (err instanceof Error && err.message.includes('503')) {
-      setError("Our AI service is currently busy. Please wait a moment and try again.");
-    } else if (context === 'first_question') {
-      setError("Could not start the quiz. Please try again later.");
-    } else if (context === 'next_question') {
-      setError("Could not load the next question. Please try again.");
-    } else {
-      setError("We couldn't generate your recommendation. Please try again.");
+    let errorMessage = "An unexpected error occurred. Please try again.";
+    if (err instanceof Error) {
+        if (err.message.includes('503') || err.message.includes('overloaded')) {
+            errorMessage = "Our AI service is currently busy. Please wait a moment and try again.";
+        } else if (context === 'first_question') {
+            errorMessage = "Could not start the quiz. Please try again later.";
+        } else if (context === 'next_question') {
+            errorMessage = "Could not load the next question. Please try again.";
+        } else {
+            errorMessage = "We couldn't generate your recommendation. Please try again.";
+        }
     }
+    setError(errorMessage);
   };
 
   async function fetchFirstQuestion(grade: Grade, stream?: string) {
@@ -396,12 +400,12 @@ export default function QuizPage() {
     }
   };
   
-  const handleStartQuiz = (data: any) => {
+  const handleStartQuiz = async (data: any) => {
       let fullStream = data.stream;
       if (data.stream === 'Science' && data.scienceGroup) {
           fullStream = `Science (${data.scienceGroup})`;
       }
-      fetchFirstQuestion(data.grade, fullStream);
+      await fetchFirstQuestion(data.grade, fullStream);
   }
 
   const restartQuiz = () => {
@@ -587,11 +591,17 @@ export default function QuizPage() {
                         />
                     )}
                 </CardContent>
-                 <CardFooter>
+                 <CardFooter className="flex-col items-start gap-4">
                     <Button type="submit" disabled={loading}>
                          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                         Start Quiz
                     </Button>
+                     {error && (
+                        <div className="text-sm text-destructive flex items-center gap-2">
+                           <p>{error}</p>
+                           <Button type="button" onClick={() => handleStartQuiz(form.getValues())} variant="link" className="p-0 h-auto">Retry</Button>
+                        </div>
+                    )}
                 </CardFooter>
               </form>
            )}
@@ -748,5 +758,3 @@ export default function QuizPage() {
     </AppLayout>
   );
 }
-
-    
