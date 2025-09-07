@@ -11,6 +11,7 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { v4 as uuidv4 } from 'uuid';
+import type { Grade } from './personalized-stream-recommendation-from-quiz';
 
 // Schemas for the questions
 const BaseQuestionSchema = z.object({
@@ -43,6 +44,8 @@ const QuizQuestionOutputSchema = z.discriminatedUnion('type', [
 export type QuizQuestion = z.infer<typeof QuizQuestionOutputSchema>;
 
 const QuizQuestionInputSchema = z.object({
+  grade: z.enum(['10th', '12th']),
+  stream: z.string().optional().describe('The student\'s stream if they are in 12th grade (e.g., Science, Commerce, Arts).'),
   history: z.array(z.object({
     question: z.string(),
     answer: z.string()
@@ -60,13 +63,22 @@ const prompt = ai.definePrompt({
   name: 'getQuizQuestionPrompt',
   input: { schema: QuizQuestionInputSchema },
   output: { schema: QuizQuestionOutputSchema },
-  prompt: `You are a career counseling expert designing an adaptive quiz for students in India (after 10th/12th grade) to recommend a career stream (Science, Commerce, Arts, Vocational).
+  prompt: `You are a career counseling expert designing an adaptive quiz for students in India to recommend a career path.
 
-Generate the NEXT quiz question. The quiz should have a good mix of question types (single-choice, multiple-choice).
-- The quiz should be around 5-7 questions long.
+The student is in grade: {{{grade}}}.
+{{#if stream}}The student's stream is: {{{stream}}}.{{/if}}
+
+Generate the NEXT quiz question based on this context and the conversation history. The quiz should have a good mix of question types (single-choice, multiple-choice).
+- The quiz will be around 5-7 questions long.
 - Use the provided history of previous answers to make the next question more relevant and insightful.
 - Vary the question format. Sometimes ask about preferences, sometimes about problem-solving styles, sometimes about ideal work environments.
 - Questions should be designed to uncover the student's underlying interests, personality, and aptitudes, mapping to frameworks like RIASEC (Realistic, Investigative, Artistic, Social, Enterprising, Conventional) without mentioning the framework directly.
+
+{{#if (eq grade '10th')}}
+The goal is to recommend a stream (Science, Commerce, Arts, Vocational) for 11th/12th grade. The questions should be broad to assess foundational interests and aptitudes.
+{{else}}
+The goal is to recommend specific degree courses and career paths after 12th grade, based on their chosen stream: {{{stream}}}. The questions should be more focused on their stream-specific interests and skills.
+{{/if}}
 
 Conversation History:
 {{#if history}}
@@ -75,10 +87,10 @@ Conversation History:
   A: {{answer}}
 {{/each}}
 {{else}}
-  This is the first question. Start with a broad question to understand the user's general inclination.
+  This is the first question. Start with a broad question to understand the user's general inclination, keeping their grade level in mind.
 {{/if}}
 
-Based on the history, generate the next question.
+Based on the context and history, generate the next question.
 - Provide 4 diverse options for each question.
 - Ensure all option values and IDs are unique.
 - Create a mix of single-choice and multiple-choice questions.
@@ -100,7 +112,9 @@ const getQuizQuestionFlow = ai.defineFlow(
     
     // Add unique IDs to the output
     output.id = uuidv4();
-    output.options.forEach(o => o.id = uuidv4());
+    if (output.options) {
+      output.options.forEach(o => o.id = uuidv4());
+    }
     
     return output;
   }
