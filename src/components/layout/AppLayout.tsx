@@ -19,6 +19,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/icons";
 import type { ReactNode } from "react";
+import { ThemeToggle } from "./ThemeToggle";
 
 const navigationItems = [
   { href: "/", label: "Dashboard", icon: Home },
@@ -66,6 +67,9 @@ function AppLayoutClient({ children }: { children: ReactNode }) {
           <div className="flex-1">
             {navLinks}
           </div>
+          <div className="mt-auto p-4">
+            <ThemeToggle />
+          </div>
         </div>
       </div>
       <div className="flex flex-col">
@@ -86,6 +90,9 @@ function AppLayoutClient({ children }: { children: ReactNode }) {
                 </div>
                 <div className="flex-1 overflow-y-auto">
                     {navLinks}
+                </div>
+                 <div className="mt-auto p-4">
+                    <ThemeToggle />
                 </div>
             </SheetContent>
           </Sheet>
