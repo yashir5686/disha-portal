@@ -289,7 +289,7 @@ export default function QuizPage() {
   const form = useForm();
   
   const currentQuestion = quizState.questions[quizState.currentStep];
-  const isFetchingNextQuestion = quizState.questions.length <= quizState.currentStep + 1;
+  const isNextQuestionReady = quizState.questions.length > quizState.currentStep + 1;
 
   const handleApiError = (err: any, context: 'first_question' | 'next_question' | 'recommendation') => {
     console.error(`Failed to fetch ${context}:`, err);
@@ -363,7 +363,7 @@ export default function QuizPage() {
 
     } catch (err) {
       handleApiError(err, 'first_question');
-      setQuizState(prevState => ({ ...prevState, stage: 'start' })); // revert stage on error
+      setQuizState(prevState => ({ ...prevState, ...tempState, stage: 'start' })); // revert stage on error
     } finally {
       setLoading(false);
     }
@@ -371,7 +371,6 @@ export default function QuizPage() {
 
 
   const processAndNext = async (data: any) => {
-    if (isFetchingNextQuestion) return; // Prevent advancing if next question isn't ready
     
     const rawAnswer = data[currentQuestion.id];
     let answerValue = '';
@@ -775,8 +774,7 @@ export default function QuizPage() {
                 <Button type="button" variant="outline" onClick={prevStep} disabled={loading}>
                   Previous
                 </Button>
-                <Button type="submit" disabled={isFetchingNextQuestion && quizState.stage === 'quiz'}>
-                  {isFetchingNextQuestion && quizState.stage === 'quiz' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                <Button type="submit" disabled={loadingRecommendation}>
                   {quizState.stage === 'profile' ? 'Get Recommendation' : 'Next'}
                 </Button>
               </CardFooter>
