@@ -10,6 +10,7 @@ import {
   type Grade,
 } from "@/ai/flows/personalized-stream-recommendation-from-quiz";
 import { getQuizQuestion, type QuizQuestion } from "@/ai/flows/get-quiz-questions";
+import { getExamDetails, type ExamDetails } from "@/ai/flows/get-exam-details";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -28,15 +29,24 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, Lightbulb, Sparkles, BrainCircuit, RefreshCw } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Loader2, Lightbulb, Sparkles, BrainCircuit, RefreshCw, Briefcase, GraduationCap, Building, Search,ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 
 const TOTAL_QUESTIONS = 5;
+const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
 
 type QuizStage = 'start' | 'quiz' | 'profile' | 'recommendation';
 
@@ -50,6 +60,181 @@ type QuizState = {
   stream?: string;
 };
 
+type ExamDetailsState = {
+  [examName: string]: {
+    loading: boolean;
+    data: ExamDetails | null;
+    error: string | null;
+  };
+};
+
+function RecommendationResult({ recommendation, onRestart }: { recommendation: PersonalizedStreamRecommendationOutput; onRestart: () => void; }) {
+  const [examDetails, setExamDetails] = useState<ExamDetailsState>({});
+
+  const fetchExamDetails = async (examName: string) => {
+    if (examDetails[examName]?.data) return; // Already fetched
+
+    setExamDetails(prev => ({
+      ...prev,
+      [examName]: { loading: true, data: null, error: null }
+    }));
+
+    try {
+      const details = await getExamDetails({ examName });
+      setExamDetails(prev => ({
+        ...prev,
+        [examName]: { loading: false, data: details, error: null }
+      }));
+    } catch (err) {
+      console.error(`Failed to fetch details for exam: ${examName}`, err);
+      setExamDetails(prev => ({
+        ...prev,
+        [examName]: { loading: false, data: null, error: 'Could not load exam details.' }
+      }));
+    }
+  };
+
+  return (
+    <Card className="w-full max-w-4xl">
+      <CardHeader className="text-center">
+        <Sparkles className="mx-auto h-12 w-12 text-accent" />
+        <CardTitle className="font-headline text-3xl mt-4">Your Personalized Recommendation</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-8">
+        <div className="bg-primary/10 border-l-4 border-primary p-4 rounded-r-lg">
+          <p className="text-sm text-primary font-semibold">{recommendation.recommendationTitle}</p>
+          <p className="text-2xl font-bold text-primary">{recommendation.recommendation}</p>
+        </div>
+
+        <div className="space-y-4">
+          <h3 className="font-semibold text-xl flex items-center gap-2"><Lightbulb className="w-6 h-6" /> Reasoning</h3>
+          <p className="text-muted-foreground whitespace-pre-line">{recommendation.reasoning}</p>
+        </div>
+        
+        <div className="space-y-4">
+          <h3 className="font-semibold text-xl flex items-center gap-2"><BrainCircuit className="w-6 h-6" /> Your Interest Analysis</h3>
+          <div className="w-full h-64">
+             <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={recommendation.interestAnalysis} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" domain={[0, 100]} />
+                  <YAxis dataKey="area" type="category" width={80} />
+                  <Tooltip cursor={{ fill: 'hsl(var(--muted))' }} />
+                  <Bar dataKey="score" fill="hsl(var(--primary))" barSize={30} />
+                </BarChart>
+              </ResponsiveContainer>
+          </div>
+        </div>
+
+        <Accordion type="multiple" className="w-full space-y-4">
+          <AccordionItem value="degrees" className="border rounded-lg">
+            <AccordionTrigger className="px-6 text-xl font-semibold"><GraduationCap className="mr-2"/>Recommended Degrees</AccordionTrigger>
+            <AccordionContent className="px-6 pt-2">
+              {recommendation.degreeOptions.map((degree, index) => (
+                <div key={index} className="py-4 border-b last:border-b-0">
+                  <h4 className="font-bold text-lg">{degree.name}</h4>
+                  <p className="text-muted-foreground text-sm mb-4">{degree.description}</p>
+                  <Accordion type="multiple" className="w-full space-y-2">
+                    <AccordionItem value={`career-${index}`} className="border rounded-md">
+                        <AccordionTrigger className="px-4 text-base font-medium">Career Options</AccordionTrigger>
+                         <AccordionContent className="px-4 pt-2 grid md:grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <h5 className="font-semibold mb-2">Private Sector Jobs</h5>
+                                <ul className="list-disc list-inside text-muted-foreground">
+                                    {degree.careerOptions.privateJobs.map(j => <li key={j}>{j}</li>)}
+                                </ul>
+                            </div>
+                             <div>
+                                <h5 className="font-semibold mb-2">Government Jobs/Exams</h5>
+                                <ul className="list-disc list-inside text-muted-foreground">
+                                    {degree.careerOptions.govtJobs.map(j => <li key={j}>{j}</li>)}
+                                </ul>
+                            </div>
+                             <div>
+                                <h5 className="font-semibold mb-2">Higher Education</h5>
+                                <ul className="list-disc list-inside text-muted-foreground">
+                                    {degree.careerOptions.higherEducation.map(j => <li key={j}>{j}</li>)}
+                                </ul>
+                            </div>
+                             <div>
+                                <h5 className="font-semibold mb-2">Entrepreneurship</h5>
+                                <ul className="list-disc list-inside text-muted-foreground">
+                                    {degree.careerOptions.entrepreneurship.map(j => <li key={j}>{j}</li>)}
+                                </ul>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </div>
+              ))}
+            </AccordionContent>
+          </AccordionItem>
+          
+          <AccordionItem value="colleges" className="border rounded-lg">
+            <AccordionTrigger className="px-6 text-xl font-semibold"><Building className="mr-2"/>College Suggestions</AccordionTrigger>
+            <AccordionContent className="px-6 pt-2">
+                {recommendation.collegeSuggestions.map((college, index) => (
+                     <div key={index} className="py-4 border-b last:border-b-0">
+                        <h4 className="font-bold text-lg">{college.name}</h4>
+                        <p className="text-muted-foreground text-sm mb-2">{college.location}</p>
+                        <Accordion type="single" collapsible>
+                            <AccordionItem value={`exam-${index}`} className="border-0">
+                                 <AccordionTrigger 
+                                    onClick={() => fetchExamDetails(college.entranceExam)}
+                                    className="p-0 hover:no-underline"
+                                 >
+                                    <Badge variant="secondary" className="cursor-pointer">
+                                        Exam: {college.entranceExam} <ChevronRight className="w-4 h-4 ml-1"/>
+                                    </Badge>
+                                 </AccordionTrigger>
+                                 <AccordionContent className="pt-4">
+                                    {examDetails[college.entranceExam]?.loading && <Loader2 className="animate-spin" />}
+                                    {examDetails[college.entranceExam]?.error && <p className="text-destructive text-sm">{examDetails[college.entranceExam]?.error}</p>}
+                                    {examDetails[college.entranceExam]?.data && (
+                                        <div className="space-y-3 text-sm">
+                                            <div>
+                                                <h5 className="font-semibold">Syllabus</h5>
+                                                <p className="text-muted-foreground">{examDetails[college.entranceExam]?.data?.syllabus}</p>
+                                            </div>
+                                            <div>
+                                                <h5 className="font-semibold">Cut-off Criteria</h5>
+                                                <p className="text-muted-foreground">{examDetails[college.entranceExam]?.data?.cutoff}</p>
+                                            </div>
+                                            <div>
+                                                <h5 className="font-semibold">Admission Process</h5>
+                                                <p className="text-muted-foreground">{examDetails[college.entranceExam]?.data?.admissionProcess}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                 </AccordionContent>
+                            </AccordionItem>
+                        </Accordion>
+                     </div>
+                ))}
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="alternatives" className="border rounded-lg">
+            <AccordionTrigger className="px-6 text-xl font-semibold"><Search className="mr-2"/>Alternative Paths</AccordionTrigger>
+            <AccordionContent className="px-6 pt-2">
+              <ul className="list-disc list-inside text-muted-foreground space-y-1">
+                {recommendation.alternativeRecommendations.map((alt, index) => (
+                  <li key={index}>{alt}</li>
+                ))}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+
+        </Accordion>
+      </CardContent>
+      <CardFooter className="flex-col gap-4">
+        <Button onClick={onRestart} className="w-full">Take Quiz Again</Button>
+        <p className="text-xs text-muted-foreground text-center">This is an AI-generated suggestion. Consider it as one of many inputs for your final decision.</p>
+      </CardFooter>
+    </Card>
+  )
+}
+
 export default function QuizPage() {
   const [quizState, setQuizState] = useState<QuizState>({
     questions: [],
@@ -62,6 +247,19 @@ export default function QuizPage() {
   const [loadingRecommendation, setLoadingRecommendation] = useState(false);
   const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  useEffect(() => {
+    try {
+      const savedRecommendation = localStorage.getItem(RECOMMENDATION_STORAGE_KEY);
+      if (savedRecommendation) {
+        setRecommendation(JSON.parse(savedRecommendation));
+        setQuizState(prevState => ({ ...prevState, stage: 'recommendation' }));
+      }
+    } catch (e) {
+      console.error("Could not parse saved recommendation", e);
+      localStorage.removeItem(RECOMMENDATION_STORAGE_KEY);
+    }
+  }, []);
 
   const form = useForm();
   
@@ -151,6 +349,11 @@ export default function QuizPage() {
         stream: quizState.stream,
       });
       setRecommendation(result);
+      try {
+         localStorage.setItem(RECOMMENDATION_STORAGE_KEY, JSON.stringify(result));
+      } catch (e) {
+          console.error("Could not save recommendation to local storage", e);
+      }
       setQuizState(prevState => ({ ...prevState, stage: 'recommendation' }));
     } catch (error) {
       console.error("Error getting recommendation:", error);
@@ -160,16 +363,17 @@ export default function QuizPage() {
     }
   };
   
-  const handleStartQuiz = async (data: any) => {
+  const handleStartQuiz = (data: any) => {
       setQuizState(prevState => ({
           ...prevState,
           grade: data.grade,
           stream: data.stream,
       }));
-      await fetchFirstQuestion();
+      fetchFirstQuestion();
   }
 
   const restartQuiz = () => {
+    localStorage.removeItem(RECOMMENDATION_STORAGE_KEY);
     setQuizState({
       questions: [],
       answers: [],
@@ -217,11 +421,10 @@ export default function QuizPage() {
   }
 
   const progressValue = (quizState.currentStep / TOTAL_QUESTIONS) * 100;
-
-  if (loadingRecommendation) {
-    return (
-      <AppLayout>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 items-center justify-center">
+  
+  const renderContent = () => {
+    if (loadingRecommendation) {
+        return (
             <Card className="w-full max-w-lg text-center">
                 <CardHeader>
                     <CardTitle className="font-headline text-2xl flex items-center justify-center gap-2">
@@ -235,43 +438,14 @@ export default function QuizPage() {
                     <p className="text-muted-foreground">This shouldn't take long...</p>
                 </CardContent>
             </Card>
-        </main>
-      </AppLayout>
-    );
-  }
+        );
+    }
+    
+    if (quizState.stage === 'recommendation' && recommendation) {
+       return <RecommendationResult recommendation={recommendation} onRestart={restartQuiz} />;
+    }
 
-  if (quizState.stage === 'recommendation' && recommendation) {
     return (
-      <AppLayout>
-        <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 items-center justify-center">
-          <Card className="w-full max-w-2xl">
-            <CardHeader className="text-center">
-              <Sparkles className="mx-auto h-12 w-12 text-accent" />
-              <CardTitle className="font-headline text-3xl mt-4">Your Personalized Recommendation</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="bg-primary/10 border-l-4 border-primary p-4 rounded-r-lg">
-                    <p className="text-sm text-primary font-semibold">{recommendation.recommendationTitle}</p>
-                    <p className="text-2xl font-bold text-primary">{recommendation.recommendation}</p>
-                </div>
-                <div className="space-y-2">
-                    <h3 className="font-semibold text-lg flex items-center gap-2"><Lightbulb className="w-5 h-5"/> Reasoning</h3>
-                    <p className="text-muted-foreground whitespace-pre-line">{recommendation.reasoning}</p>
-                </div>
-            </CardContent>
-            <CardFooter className="flex-col gap-4">
-              <Button onClick={restartQuiz} className="w-full">Take Quiz Again</Button>
-              <p className="text-xs text-muted-foreground">This is an AI-generated suggestion. Consider it as one of many inputs for your final decision.</p>
-            </CardFooter>
-          </Card>
-        </main>
-      </AppLayout>
-    );
-  }
-
-  return (
-    <AppLayout>
-      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 justify-center items-center">
         <Card className="w-full max-w-2xl">
            <FormProvider {...form}>
            {quizState.stage === 'start' && (
@@ -492,6 +666,13 @@ export default function QuizPage() {
             )}
           </FormProvider>
         </Card>
+    );
+  }
+
+  return (
+    <AppLayout>
+      <main className="flex flex-1 flex-col gap-4 p-4 md:gap-8 md:p-8 justify-center items-center">
+        {renderContent()}
       </main>
     </AppLayout>
   );

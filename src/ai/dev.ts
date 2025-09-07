@@ -9,3 +9,4 @@ import '@/ai/flows/get-scholarships';
 import '@/ai/flows/get-study-resources';
 import '@/ai/flows/get-timeline';
 import '@/ai/flows/get-quiz-questions';
+import '@/ai/flows/get-exam-details';
