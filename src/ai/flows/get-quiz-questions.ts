@@ -60,7 +60,12 @@ export async function getQuizQuestion(input: QuizQuestionInput): Promise<QuizQue
 
 const prompt = ai.definePrompt({
   name: 'getQuizQuestionPrompt',
-  input: { schema: QuizQuestionInputSchema },
+  input: { schema: z.object({
+    grade: z.enum(['10th', '12th']),
+    stream: z.string().optional(),
+    history: z.array(z.object({ question: z.string(), answer: z.string() })).optional(),
+    questionNumber: z.number(),
+  }) },
   output: { schema: QuizQuestionOutputSchema },
   prompt: `You are a psychometrics-aware content designer for Indian students. Your task is to generate the NEXT adaptive interest + capability quiz question based on the user's progress.
 
@@ -88,7 +93,7 @@ The quiz length depends on the grade level. You must generate the next question 
   - Questions 11-16: Likert scale (1-5 agreement)
   - Questions 17-21: Micro-skill snapshots (scenario-based, single-choice)
 
-**Current Question Number: {{add history.length 1}}**
+**Current Question Number: {{questionNumber}}**
 
 **Based on the current question number and the student's grade, determine the correct question type to generate NOW.**
 
@@ -136,8 +141,9 @@ const getQuizQuestionFlow = ai.defineFlow(
     outputSchema: QuizQuestionOutputSchema,
   },
   async (input) => {
-    // Map the input to a format the prompt understands better if needed, but the current prompt is flexible.
-    const { output } = await prompt(input);
+    const questionNumber = (input.history?.length || 0) + 1;
+    const promptInput = { ...input, questionNumber };
+    const { output } = await prompt(promptInput);
     
     if (!output) {
       throw new Error("Failed to generate quiz question.");
@@ -145,8 +151,8 @@ const getQuizQuestionFlow = ai.defineFlow(
     
     // Add unique IDs to the output
     output.id = uuidv4();
-    if (output.options) {
-      output.options.forEach(o => o.id = uuidv4());
+    if ('options' in output && output.options) {
+      output.options.forEach(o => o.id = uuidvv4());
     }
     
     return output;
