@@ -269,6 +269,7 @@ export default function QuizPage() {
     stage: 'start',
   });
   const [loading, setLoading] = useState(false);
+  const [loadingNext, setLoadingNext] = useState(false);
   const [loadingRecommendation, setLoadingRecommendation] = useState(false);
   const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -309,11 +310,14 @@ export default function QuizPage() {
   };
   
   const fetchQuestion = async (isFirst: boolean) => {
-    setLoading(isFirst); // Only show spinner for the very first question
+    if(isFirst) {
+        setLoading(true);
+    } else {
+        setLoadingNext(true);
+    }
     setError(null);
     
-    // Determine history based on whether it's the first question or a subsequent one
-    const history = isFirst ? [] : quizState.answers;
+    const history = quizState.answers;
     const grade = quizState.grade!;
     const stream = quizState.stream;
 
@@ -322,52 +326,59 @@ export default function QuizPage() {
       setQuizState(prevState => ({
         ...prevState,
         questions: [...prevState.questions, newQuestion],
-        stage: 'quiz', // Ensure stage is set to quiz
+        stage: 'quiz',
       }));
     } catch (err) {
       handleApiError(err, isFirst ? 'first_question' : 'next_question');
     } finally {
       if (isFirst) {
         setLoading(false);
+      } else {
+          setLoadingNext(false);
       }
     }
   };
 
+  const fetchFirstQuestion = async (grade: Grade, stream?: string) => {
+      const totalQuestions = grade === '10th' ? 14 : 12;
+      const tempState = { grade, stream, totalQuestions };
 
-  const startAndPrefetch = async (grade: Grade, stream?: string) => {
-    setLoading(true);
-    setError(null);
-    
-    const totalQuestions = grade === '10th' ? 14 : 22;
-    const tempState = { grade, stream, totalQuestions };
+      try {
+          const firstQuestion = await getQuizQuestion({ history: [], grade, stream });
+          setQuizState(prevState => ({
+              ...prevState,
+              ...tempState,
+              questions: [firstQuestion],
+              stage: 'quiz',
+          }));
 
-    try {
-      // Fetch first question
-      const firstQuestion = await getQuizQuestion({ history: [], grade, stream });
-      
-      setQuizState(prevState => ({
-        ...prevState,
-        ...tempState,
-        questions: [firstQuestion],
-        stage: 'quiz',
-      }));
-
-      // Immediately trigger prefetch for the second question
-      if (totalQuestions > 1) {
-        const secondQuestion = await getQuizQuestion({ history: [{ question: firstQuestion.question, answer: "prefetch" }], grade, stream });
-        setQuizState(prevState => ({
-          ...prevState,
-          questions: [...prevState.questions, secondQuestion],
-        }));
+          // Prefetch second question
+          if (totalQuestions > 1) {
+              const secondQuestion = await getQuizQuestion({ history: [{ question: firstQuestion.question, answer: "prefetch" }], grade, stream });
+              setQuizState(prevState => ({
+                  ...prevState,
+                  questions: [firstQuestion, secondQuestion],
+              }));
+          }
+      } catch (err) {
+          handleApiError(err, 'first_question');
+          setQuizState(prevState => ({ ...prevState, ...tempState, stage: 'start' }));
+      } finally {
+          setLoading(false);
       }
+  }
 
-    } catch (err) {
-      handleApiError(err, 'first_question');
-      setQuizState(prevState => ({ ...prevState, ...tempState, stage: 'start' })); // revert stage on error
-    } finally {
-      setLoading(false);
-    }
-  };
+
+  const handleStartQuiz = async (data: any) => {
+      setLoading(true);
+      setError(null);
+      let fullStream = data.stream;
+      if (data.stream === 'Science' && data.scienceGroup) {
+          fullStream = `Science (${data.scienceGroup})`;
+      }
+      setQuizState(prevState => ({...prevState, grade: data.grade, stream: fullStream}))
+      await fetchFirstQuestion(data.grade, fullStream);
+  }
 
 
   const processAndNext = async (data: any) => {
@@ -431,13 +442,6 @@ export default function QuizPage() {
     }
   };
   
-  const handleStartQuiz = async (data: any) => {
-      let fullStream = data.stream;
-      if (data.stream === 'Science' && data.scienceGroup) {
-          fullStream = `Science (${data.scienceGroup})`;
-      }
-      await startAndPrefetch(data.grade, fullStream);
-  }
 
   const restartQuiz = () => {
     localStorage.removeItem(RECOMMENDATION_STORAGE_KEY);
@@ -652,7 +656,7 @@ export default function QuizPage() {
             </CardHeader>
             <form onSubmit={form.handleSubmit(quizState.stage === 'profile' ? getRecommendation : processAndNext)}>
               <CardContent className="min-h-[300px]">
-                {loading ? (
+                {loadingNext && !currentQuestion ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
@@ -771,10 +775,11 @@ export default function QuizPage() {
                 }
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={prevStep} disabled={loading}>
+                <Button type="button" variant="outline" onClick={prevStep} disabled={loadingNext}>
                   Previous
                 </Button>
-                <Button type="submit" disabled={loadingRecommendation}>
+                <Button type="submit" disabled={loadingRecommendation || loadingNext}>
+                   {loadingNext && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {quizState.stage === 'profile' ? 'Get Recommendation' : 'Next'}
                 </Button>
               </CardFooter>

@@ -83,15 +83,15 @@ CONTEXT
 {{/if}}
 
 QUIZ STRUCTURE & ADAPTATION RULES
-The quiz length depends on the grade level. You must generate the next question in the sequence.
+The quiz length and structure depend on the grade level. You must generate the next question in the sequence.
 
 - **Class 10 (Quick Quiz - 14 questions total):**
   - Questions 1-6: Scenario forced-choice (4 options)
   - Questions 7-14: Likert scale (1-5 agreement)
-- **Class 12 (Deep Quiz - 21 questions total):**
-  - Questions 1-10: Scenario forced-choice (4 options)
-  - Questions 11-16: Likert scale (1-5 agreement)
-  - Questions 17-21: Micro-skill snapshots (scenario-based, single-choice)
+- **Class 12 (Deep Quiz - 12 questions total):**
+  - Questions 1-5: Scenario forced-choice (4 options)
+  - Questions 6-9: Likert scale (1-5 agreement)
+  - Questions 10-12: Micro-skill snapshots (scenario-based, single-choice)
 
 **Current Question Number: {{questionNumber}}**
 
