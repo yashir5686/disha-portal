@@ -269,7 +269,6 @@ export default function QuizPage() {
     stage: 'start',
   });
   const [loading, setLoading] = useState(false);
-  const [loadingNext, setLoadingNext] = useState(false);
   const [loadingRecommendation, setLoadingRecommendation] = useState(false);
   const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -290,7 +289,6 @@ export default function QuizPage() {
   const form = useForm();
   
   const currentQuestion = quizState.questions[quizState.currentStep];
-  const isNextQuestionReady = quizState.questions.length > quizState.currentStep + 1;
 
   const handleApiError = (err: any, context: 'first_question' | 'next_question' | 'recommendation') => {
     console.error(`Failed to fetch ${context}:`, err);
@@ -309,37 +307,27 @@ export default function QuizPage() {
     setError(errorMessage);
   };
   
-  const fetchQuestion = async (isFirst: boolean) => {
-    if(isFirst) {
-        setLoading(true);
-    } else {
-        setLoadingNext(true);
-    }
-    setError(null);
-    
-    const history = quizState.answers;
-    const grade = quizState.grade!;
-    const stream = quizState.stream;
-
+  const fetchQuestion = async (history: { question: string; answer: string }[], grade: Grade, stream?: string) => {
     try {
       const newQuestion = await getQuizQuestion({ history, grade, stream });
-      setQuizState(prevState => ({
-        ...prevState,
-        questions: [...prevState.questions, newQuestion],
-        stage: 'quiz',
-      }));
+      setQuizState(prevState => {
+        const newQuestions = [...prevState.questions];
+        const questionIndex = history.length;
+        newQuestions[questionIndex] = newQuestion;
+        return {
+          ...prevState,
+          questions: newQuestions,
+        };
+      });
     } catch (err) {
-      handleApiError(err, isFirst ? 'first_question' : 'next_question');
-    } finally {
-      if (isFirst) {
-        setLoading(false);
-      } else {
-          setLoadingNext(false);
-      }
+      // Don't show error for pre-fetching, it will show when user tries to access the question
+      console.error(`Failed to pre-fetch question ${history.length + 1}:`, err);
     }
   };
 
   const fetchFirstQuestion = async (grade: Grade, stream?: string) => {
+      setLoading(true);
+      setError(null);
       const totalQuestions = grade === '10th' ? 14 : 12;
       const tempState = { grade, stream, totalQuestions };
 
@@ -352,14 +340,16 @@ export default function QuizPage() {
               stage: 'quiz',
           }));
 
-          // Prefetch second question
+          // Pre-fetch next two questions
+          const tempHistory1 = [{ question: firstQuestion.question, answer: "prefetch" }];
           if (totalQuestions > 1) {
-              const secondQuestion = await getQuizQuestion({ history: [{ question: firstQuestion.question, answer: "prefetch" }], grade, stream });
-              setQuizState(prevState => ({
-                  ...prevState,
-                  questions: [firstQuestion, secondQuestion],
-              }));
+            fetchQuestion(tempHistory1, grade, stream);
           }
+          if (totalQuestions > 2) {
+            const tempHistory2 = [...tempHistory1, { question: "prefetch question", answer: "prefetch" }];
+            fetchQuestion(tempHistory2, grade, stream);
+          }
+
       } catch (err) {
           handleApiError(err, 'first_question');
           setQuizState(prevState => ({ ...prevState, ...tempState, stage: 'start' }));
@@ -370,8 +360,6 @@ export default function QuizPage() {
 
 
   const handleStartQuiz = async (data: any) => {
-      setLoading(true);
-      setError(null);
       let fullStream = data.stream;
       if (data.stream === 'Science' && data.scienceGroup) {
           fullStream = `Science (${data.scienceGroup})`;
@@ -400,19 +388,24 @@ export default function QuizPage() {
     
     const newAnswers = [...quizState.answers, { question: currentQuestion.question, answer: answerValue }];
     
+    const nextStep = quizState.currentStep + 1;
+
     setQuizState(prevState => ({
       ...prevState,
       answers: newAnswers,
-      currentStep: prevState.currentStep + 1,
+      currentStep: nextStep,
     }));
     
     form.reset();
 
-    const nextStep = quizState.currentStep + 1;
     if (nextStep >= quizState.totalQuestions) {
       setQuizState(prevState => ({ ...prevState, stage: 'profile' }));
-    } else if (quizState.questions.length <= nextStep + 1) { // Prefetch if we don't have the *next* next question
-      fetchQuestion(false);
+    } else {
+      // Pre-fetch the question two steps ahead of the new current step
+      const questionIndexToFetch = nextStep + 1;
+      if (quizState.questions.length <= questionIndexToFetch && questionIndexToFetch < quizState.totalQuestions) {
+        fetchQuestion(newAnswers, quizState.grade!, quizState.stream);
+      }
     }
   };
 
@@ -466,7 +459,7 @@ export default function QuizPage() {
     if (quizState.questions.length === 0 && quizState.grade) {
       handleStartQuiz(form.getValues());
     } else {
-      fetchQuestion(false);
+      fetchQuestion(quizState.answers, quizState.grade!, quizState.stream);
     }
   };
   
@@ -656,7 +649,7 @@ export default function QuizPage() {
             </CardHeader>
             <form onSubmit={form.handleSubmit(quizState.stage === 'profile' ? getRecommendation : processAndNext)}>
               <CardContent className="min-h-[300px]">
-                {loadingNext && !currentQuestion ? (
+                {loading && !currentQuestion ? (
                   <div className="flex items-center justify-center h-full">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
@@ -775,11 +768,11 @@ export default function QuizPage() {
                 }
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button type="button" variant="outline" onClick={prevStep} disabled={loadingNext}>
+                <Button type="button" variant="outline" onClick={prevStep} disabled={loadingRecommendation}>
                   Previous
                 </Button>
-                <Button type="submit" disabled={loadingRecommendation || loadingNext}>
-                   {loadingNext && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit" disabled={loadingRecommendation}>
+                  {loadingRecommendation && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {quizState.stage === 'profile' ? 'Get Recommendation' : 'Next'}
                 </Button>
               </CardFooter>
