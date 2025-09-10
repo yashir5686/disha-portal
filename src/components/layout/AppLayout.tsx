@@ -20,6 +20,8 @@ import { cn } from "@/lib/utils";
 import { Logo } from "@/components/icons";
 import type { ReactNode } from "react";
 import { ThemeToggle } from "./ThemeToggle";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { useState, useEffect } from "react";
 
 const navigationItems = [
   { href: "/", label: "Dashboard", icon: Home },
@@ -35,6 +37,13 @@ const navigationItems = [
 
 function AppLayoutClient({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const isMobile = useIsMobile();
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
 
   const navLinks = (
     <nav className="grid items-start px-2 text-sm font-medium lg:px-4">
@@ -53,6 +62,10 @@ function AppLayoutClient({ children }: { children: ReactNode }) {
       ))}
     </nav>
   );
+
+  if (!isClient) {
+    return null;
+  }
 
   return (
     <div className="grid min-h-screen w-full md:grid-cols-[220px_1fr] lg:grid-cols-[280px_1fr]">
