@@ -320,37 +320,42 @@ export default function QuizPage() {
         };
       });
     } catch (err) {
-      // Don't show error for pre-fetching, it will show when user tries to access the question
       console.error(`Failed to pre-fetch question ${history.length + 1}:`, err);
     }
   };
+
+  useEffect(() => {
+    const { stage, answers, grade, stream, questions, totalQuestions } = quizState;
+    if (stage !== 'quiz' || !grade) return;
+  
+    // Pre-fetch questions to maintain a buffer of 2
+    const currentAnswerCount = answers.length;
+    const questionsNeeded = Math.min(currentAnswerCount + 2, totalQuestions);
+  
+    if (questions.length < questionsNeeded) {
+      fetchQuestion(answers, grade, stream);
+    }
+  }, [quizState.answers, quizState.stage]);
+  
 
   const fetchFirstQuestion = async (grade: Grade, stream?: string) => {
       setLoading(true);
       setError(null);
       const totalQuestions = grade === '10th' ? 14 : 12;
-      const tempState = { grade, stream, totalQuestions };
 
       try {
           const firstQuestion = await getQuizQuestion({ history: [], grade, stream });
           setQuizState(prevState => ({
               ...prevState,
-              ...tempState,
+              grade,
+              stream,
+              totalQuestions,
               questions: [firstQuestion],
               stage: 'quiz',
           }));
-
-          // Pre-fetch next two questions
-          if (totalQuestions > 1) {
-            fetchQuestion([{ question: firstQuestion.question, answer: "prefetch" }], grade, stream);
-          }
-          if (totalQuestions > 2) {
-            fetchQuestion([{ question: "prefetch question 1", answer: "prefetch" }, { question: "prefetch question 2", answer: "prefetch" }], grade, stream);
-          }
-
       } catch (err) {
           handleApiError(err, 'first_question');
-          setQuizState(prevState => ({ ...prevState, ...tempState, stage: 'start' }));
+          setQuizState(prevState => ({ ...prevState, grade, stream, totalQuestions, stage: 'start' }));
       } finally {
           setLoading(false);
       }
@@ -363,7 +368,6 @@ export default function QuizPage() {
       if (data.stream === 'Science' && data.scienceGroup) {
           fullStream = `Science (${data.scienceGroup})`;
       }
-      setQuizState(prevState => ({...prevState, grade: data.grade, stream: fullStream, totalQuestions: data.grade === '10th' ? 14 : 12 }))
       await fetchFirstQuestion(data.grade, fullStream);
   }
 
@@ -386,31 +390,23 @@ export default function QuizPage() {
     
     form.reset();
 
-    setQuizState(prevState => {
-      const newAnswers = [...prevState.answers, { question: currentQuestion.question, answer: answerValue }];
-      const nextStep = prevState.currentStep + 1;
-
-      if (nextStep >= prevState.totalQuestions) {
-        return {
-          ...prevState,
-          answers: newAnswers,
-          currentStep: nextStep,
-          stage: 'profile',
-        };
-      }
-
-      // Pre-fetch questions to maintain a buffer of 2
-      const questionIndexToFetch = newAnswers.length + 1; // Fetch 2 questions ahead of the *new* current question
-      if (prevState.questions.length <= questionIndexToFetch && questionIndexToFetch < prevState.totalQuestions) {
-        fetchQuestion(newAnswers, prevState.grade!, prevState.stream);
-      }
-      
-      return {
-        ...prevState,
-        answers: newAnswers,
-        currentStep: nextStep,
-      };
-    });
+    const newAnswers = [...quizState.answers, { question: currentQuestion.question, answer: answerValue }];
+    const nextStep = quizState.currentStep + 1;
+    
+    if (nextStep >= quizState.totalQuestions) {
+        setQuizState(prevState => ({
+            ...prevState,
+            answers: newAnswers,
+            stage: 'profile',
+            currentStep: nextStep,
+        }));
+    } else {
+        setQuizState(prevState => ({
+            ...prevState,
+            answers: newAnswers,
+            currentStep: nextStep,
+        }));
+    }
   };
 
 
@@ -775,7 +771,7 @@ export default function QuizPage() {
                 <Button type="button" variant="outline" onClick={prevStep} disabled={loadingRecommendation}>
                   Previous
                 </Button>
-                <Button type="submit" disabled={loadingRecommendation || (quizState.stage === 'quiz' && !currentQuestion)}>
+                <Button type="submit" disabled={loadingRecommendation}>
                   {loadingRecommendation && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {quizState.stage === 'profile' ? 'Get Recommendation' : 'Next'}
                 </Button>
