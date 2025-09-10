@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import AppLayout from "@/components/layout/AppLayout";
@@ -11,6 +12,7 @@ import {
 } from "@/ai/flows/personalized-stream-recommendation-from-quiz";
 import { getQuizQuestion, type QuizQuestion } from "@/ai/flows/get-quiz-questions";
 import { getExamDetails, type ExamDetails } from "@/ai/flows/get-exam-details";
+import { DEMO_USER_EMAIL, DEMO_QUESTIONS, DEMO_RECOMMENDATION } from "@/lib/demo-quiz";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -269,6 +271,8 @@ export default function QuizPage() {
   const { user, userProfile, loading: authLoading, recommendation, setRecommendation, updateUserProfile } = useAuth();
   const router = useRouter();
 
+  const isDemoUser = user?.email === DEMO_USER_EMAIL;
+
   const [quizState, setQuizState] = useState<QuizState>({
     questions: [],
     answers: [],
@@ -331,6 +335,8 @@ export default function QuizPage() {
   };
 
   useEffect(() => {
+    if (isDemoUser) return; // Don't pre-fetch for demo user
+    
     const { stage, answers, grade, stream, questions, totalQuestions } = quizState;
     if (stage !== 'quiz' || !grade) return;
   
@@ -340,7 +346,7 @@ export default function QuizPage() {
     if (questions.length < questionsNeeded) {
       fetchQuestion(answers, grade, stream);
     }
-  }, [quizState.answers, quizState.stage, quizState.grade, quizState.stream, quizState.questions.length, quizState.totalQuestions]);
+  }, [quizState.answers, quizState.stage, quizState.grade, quizState.stream, quizState.questions.length, quizState.totalQuestions, isDemoUser]);
   
 
   const fetchFirstQuestion = async (grade: Grade, stream?: string) => {
@@ -349,15 +355,26 @@ export default function QuizPage() {
       const totalQuestions = grade === '10th' ? 14 : 12;
 
       try {
-          const firstQuestion = await getQuizQuestion({ history: [], grade, stream });
-          setQuizState(prevState => ({
-              ...prevState,
-              grade,
-              stream,
-              totalQuestions,
-              questions: [firstQuestion],
-              stage: 'quiz',
-          }));
+          if (isDemoUser) {
+              setQuizState(prevState => ({
+                  ...prevState,
+                  grade,
+                  stream,
+                  totalQuestions: DEMO_QUESTIONS.length,
+                  questions: DEMO_QUESTIONS,
+                  stage: 'quiz',
+              }));
+          } else {
+            const firstQuestion = await getQuizQuestion({ history: [], grade, stream });
+            setQuizState(prevState => ({
+                ...prevState,
+                grade,
+                stream,
+                totalQuestions,
+                questions: [firstQuestion],
+                stage: 'quiz',
+            }));
+          }
       } catch (err) {
           handleApiError(err, 'first_question');
           setQuizState(prevState => ({ ...prevState, grade, stream, totalQuestions, stage: 'start' }));
@@ -398,22 +415,20 @@ export default function QuizPage() {
     const newAnswers = [...quizState.answers, { question: currentQuestion.question, answer: answerValue }];
     const nextStep = quizState.currentStep + 1;
     
-    setQuizState(prevState => {
-        if (nextStep >= prevState.totalQuestions) {
-            return {
-                ...prevState,
-                answers: newAnswers,
-                stage: 'profile',
-                currentStep: nextStep,
-            };
-        } else {
-            return {
-                ...prevState,
-                answers: newAnswers,
-                currentStep: nextStep,
-            };
-        }
-    });
+    if (nextStep >= quizState.totalQuestions) {
+        setQuizState(prevState => ({
+            ...prevState,
+            answers: newAnswers,
+            stage: 'profile',
+            currentStep: nextStep,
+        }));
+    } else {
+        setQuizState(prevState => ({
+            ...prevState,
+            answers: newAnswers,
+            currentStep: nextStep,
+        }));
+    }
   };
 
 
@@ -424,12 +439,17 @@ export default function QuizPage() {
     setError(null);
     setRecommendation(null);
     try {
-      const result = await getPersonalizedStreamRecommendation({
-        quizResults: quizState.answers,
-        profileInformation: data.profileInformation,
-        grade: quizState.grade!,
-        stream: quizState.stream,
-      });
+      let result;
+      if (isDemoUser) {
+        result = DEMO_RECOMMENDATION;
+      } else {
+        result = await getPersonalizedStreamRecommendation({
+          quizResults: quizState.answers,
+          profileInformation: data.profileInformation,
+          grade: quizState.grade!,
+          stream: quizState.stream,
+        });
+      }
       
       await updateUserProfile({ recommendation: result });
       setRecommendation(result);
