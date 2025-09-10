@@ -2,8 +2,8 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
-import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, Auth } from 'firebase/auth';
-import { doc, setDoc, getDoc, DocumentData, Firestore } from 'firebase/firestore';
+import { onAuthStateChanged, User, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
 import { PersonalizedStreamRecommendationOutput } from '@/ai/flows/personalized-stream-recommendation-from-quiz';
 
@@ -37,7 +37,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
 
   useEffect(() => {
-    if (!auth) {
+    if (!auth || !db) {
         setLoading(false);
         return;
     }
@@ -78,10 +78,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const login = (email: string, pass: string) => {
+    if (!auth) return Promise.reject(new Error("Firebase not initialized"));
     return signInWithEmailAndPassword(auth, email, pass);
   };
 
   const signup = async (email: string, pass: string, name: string) => {
+    if (!auth || !db) return Promise.reject(new Error("Firebase not initialized"));
     const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
     const user = userCredential.user;
     const userProfile: UserProfile = {
@@ -95,15 +97,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const logout = () => {
+    if (!auth) return Promise.reject(new Error("Firebase not initialized"));
     return signOut(auth);
   };
   
   const updateUserProfile = async (profileData: Partial<UserProfile>) => {
-    if (!user) return;
+    if (!user || !db) return;
     const userDocRef = doc(db, 'users', user.uid);
     await setDoc(userDocRef, profileData, { merge: true });
     setUserProfile(prev => ({...prev, ...profileData} as UserProfile));
-    if (profileData.recommendation) {
+    if (profileData.recommendation !== undefined) {
         setRecommendation(profileData.recommendation);
     }
   };
@@ -121,7 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setRecommendation,
   };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
 export const useAuth = () => {

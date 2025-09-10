@@ -27,7 +27,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!authLoading && !user) {
+    if (authLoading) return; // Wait until auth state is confirmed
+    if (!user) {
       router.push('/login');
       return;
     }

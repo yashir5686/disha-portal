@@ -2,8 +2,6 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from "firebase/app";
 import { getAuth, type Auth } from "firebase/auth";
 import { getFirestore, type Firestore } from "firebase/firestore";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
 // Your web app's Firebase configuration
 const firebaseConfig = {
@@ -17,17 +15,26 @@ const firebaseConfig = {
 
 // Initialize Firebase for client-side
 let app: FirebaseApp;
-let auth: Auth;
-let db: Firestore;
 
-if (typeof window !== 'undefined' && !getApps().length) {
-    app = initializeApp(firebaseConfig);
-    auth = getAuth(app);
-    db = getFirestore(app);
-} else if (getApps().length) {
-    app = getApp();
-    auth = getAuth(app);
-    db = getFirestore(app);
+const getFirebaseApp = () => {
+    if (typeof window === 'undefined') {
+        return null;
+    }
+    if (!getApps().length) {
+        if (firebaseConfig.apiKey) {
+            app = initializeApp(firebaseConfig);
+        } else {
+            console.error("Firebase API key is missing. Firebase has not been initialized.");
+            return null;
+        }
+    } else {
+        app = getApp();
+    }
+    return app;
 }
+
+const appInstance = getFirebaseApp();
+const auth: Auth | null = appInstance ? getAuth(appInstance) : null;
+const db: Firestore | null = appInstance ? getFirestore(appInstance) : null;
 
 export { app, auth, db };
