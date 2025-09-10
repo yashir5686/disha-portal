@@ -360,6 +360,7 @@ export default function QuizPage() {
 
 
   const handleStartQuiz = async (data: any) => {
+      setError(null);
       let fullStream = data.stream;
       if (data.stream === 'Science' && data.scienceGroup) {
           fullStream = `Science (${data.scienceGroup})`;
@@ -370,7 +371,6 @@ export default function QuizPage() {
 
 
   const processAndNext = async (data: any) => {
-    
     const rawAnswer = data[currentQuestion.id];
     let answerValue = '';
 
@@ -387,25 +387,28 @@ export default function QuizPage() {
     if (!answerValue) return;
     
     const newAnswers = [...quizState.answers, { question: currentQuestion.question, answer: answerValue }];
-    
     const nextStep = quizState.currentStep + 1;
 
-    setQuizState(prevState => ({
-      ...prevState,
-      answers: newAnswers,
-      currentStep: nextStep,
-    }));
-    
     form.reset();
 
     if (nextStep >= quizState.totalQuestions) {
-      setQuizState(prevState => ({ ...prevState, stage: 'profile' }));
+        setQuizState(prevState => ({
+            ...prevState,
+            stage: 'profile',
+            answers: newAnswers,
+            currentStep: nextStep,
+        }));
     } else {
-      // Pre-fetch the question two steps ahead of the new current step
-      const questionIndexToFetch = nextStep + 1;
-      if (quizState.questions.length <= questionIndexToFetch && questionIndexToFetch < quizState.totalQuestions) {
-        fetchQuestion(newAnswers, quizState.grade!, quizState.stream);
-      }
+        setQuizState(prevState => ({
+            ...prevState,
+            answers: newAnswers,
+            currentStep: nextStep,
+        }));
+        // Pre-fetch the question two steps ahead of the new current step
+        const questionIndexToFetch = nextStep + 1;
+        if (quizState.questions.length <= questionIndexToFetch && questionIndexToFetch < quizState.totalQuestions) {
+            fetchQuestion(newAnswers, quizState.grade!, quizState.stream);
+        }
     }
   };
 
@@ -487,7 +490,7 @@ export default function QuizPage() {
      }
   }
 
-  const progressValue = (quizState.currentStep / quizState.totalQuestions) * 100;
+  const progressValue = quizState.totalQuestions > 0 ? ((quizState.currentStep) / quizState.totalQuestions) * 100 : 0;
   
   const renderContent = () => {
     if (loadingRecommendation) {
@@ -771,7 +774,7 @@ export default function QuizPage() {
                 <Button type="button" variant="outline" onClick={prevStep} disabled={loadingRecommendation}>
                   Previous
                 </Button>
-                <Button type="submit" disabled={loadingRecommendation}>
+                <Button type="submit" disabled={loadingRecommendation || (quizState.stage === 'quiz' && !currentQuestion)}>
                   {loadingRecommendation && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {quizState.stage === 'profile' ? 'Get Recommendation' : 'Next'}
                 </Button>
