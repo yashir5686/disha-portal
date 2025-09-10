@@ -37,6 +37,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
 
   useEffect(() => {
+    if (!auth) {
+        setLoading(false);
+        return;
+    }
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setLoading(true);
       if (user) {
