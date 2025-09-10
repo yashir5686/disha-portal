@@ -341,13 +341,11 @@ export default function QuizPage() {
           }));
 
           // Pre-fetch next two questions
-          const tempHistory1 = [{ question: firstQuestion.question, answer: "prefetch" }];
           if (totalQuestions > 1) {
-            fetchQuestion(tempHistory1, grade, stream);
+            fetchQuestion([{ question: firstQuestion.question, answer: "prefetch" }], grade, stream);
           }
           if (totalQuestions > 2) {
-            const tempHistory2 = [...tempHistory1, { question: "prefetch question", answer: "prefetch" }];
-            fetchQuestion(tempHistory2, grade, stream);
+            fetchQuestion([{ question: "prefetch question 1", answer: "prefetch" }, { question: "prefetch question 2", answer: "prefetch" }], grade, stream);
           }
 
       } catch (err) {
@@ -365,7 +363,7 @@ export default function QuizPage() {
       if (data.stream === 'Science' && data.scienceGroup) {
           fullStream = `Science (${data.scienceGroup})`;
       }
-      setQuizState(prevState => ({...prevState, grade: data.grade, stream: fullStream}))
+      setQuizState(prevState => ({...prevState, grade: data.grade, stream: fullStream, totalQuestions: data.grade === '10th' ? 14 : 12 }))
       await fetchFirstQuestion(data.grade, fullStream);
   }
 
@@ -386,30 +384,33 @@ export default function QuizPage() {
     
     if (!answerValue) return;
     
-    const newAnswers = [...quizState.answers, { question: currentQuestion.question, answer: answerValue }];
-    const nextStep = quizState.currentStep + 1;
-
     form.reset();
 
-    if (nextStep >= quizState.totalQuestions) {
-        setQuizState(prevState => ({
-            ...prevState,
-            stage: 'profile',
-            answers: newAnswers,
-            currentStep: nextStep,
-        }));
-    } else {
-        setQuizState(prevState => ({
-            ...prevState,
-            answers: newAnswers,
-            currentStep: nextStep,
-        }));
-        // Pre-fetch the question two steps ahead of the new current step
-        const questionIndexToFetch = nextStep + 1;
-        if (quizState.questions.length <= questionIndexToFetch && questionIndexToFetch < quizState.totalQuestions) {
-            fetchQuestion(newAnswers, quizState.grade!, quizState.stream);
-        }
-    }
+    setQuizState(prevState => {
+      const newAnswers = [...prevState.answers, { question: currentQuestion.question, answer: answerValue }];
+      const nextStep = prevState.currentStep + 1;
+
+      if (nextStep >= prevState.totalQuestions) {
+        return {
+          ...prevState,
+          answers: newAnswers,
+          currentStep: nextStep,
+          stage: 'profile',
+        };
+      }
+
+      // Pre-fetch questions to maintain a buffer of 2
+      const questionIndexToFetch = newAnswers.length + 1; // Fetch 2 questions ahead of the *new* current question
+      if (prevState.questions.length <= questionIndexToFetch && questionIndexToFetch < prevState.totalQuestions) {
+        fetchQuestion(newAnswers, prevState.grade!, prevState.stream);
+      }
+      
+      return {
+        ...prevState,
+        answers: newAnswers,
+        currentStep: nextStep,
+      };
+    });
   };
 
 
