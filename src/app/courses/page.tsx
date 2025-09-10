@@ -3,33 +3,18 @@
 
 import AppLayout from "@/components/layout/AppLayout";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { getCoursesAndCareers, CourseToCareer } from "@/ai/flows/get-courses-and-careers";
-import { Briefcase, ChevronRight, GraduationCap, Info, BookOpen, ArrowUpRight } from "lucide-react";
+import { GraduationCap, Info, BookOpen, ArrowUpRight } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { PersonalizedStreamRecommendationOutput } from "@/ai/flows/personalized-stream-recommendation-from-quiz";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useAuth } from "@/context/AuthContext";
 
-const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
 
 export default function CoursesPage() {
-  const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    const savedRecommendation = localStorage.getItem(RECOMMENDATION_STORAGE_KEY);
-    if (savedRecommendation) {
-      try {
-        setRecommendation(JSON.parse(savedRecommendation));
-      } catch (e) {
-        console.error("Failed to parse recommendation from localStorage", e);
-      }
-    }
-    setLoading(false);
-  }, []);
+  const { recommendation, loading } = useAuth();
 
   const recommendedDegrees = recommendation?.degreeOptions || [];
   const recommendedCourses = recommendation?.recommendedCourses || [];

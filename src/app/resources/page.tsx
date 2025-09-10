@@ -7,46 +7,35 @@ import { ArrowUpRight, BookCopy, Newspaper, Loader2, Info } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import type { PersonalizedStreamRecommendationOutput } from "@/ai/flows/personalized-stream-recommendation-from-quiz";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/context/AuthContext";
 
-const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
 
 export default function ResourcesPage() {
-  const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
+  const { recommendation, loading: authLoading } = useAuth();
   const [articles, setArticles] = useState<ArticleResource[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingArticles, setLoadingArticles] = useState(true);
 
   useEffect(() => {
-    const savedRecommendation = localStorage.getItem(RECOMMENDATION_STORAGE_KEY);
-    let recommendationData: PersonalizedStreamRecommendationOutput | null = null;
-    if (savedRecommendation) {
-      try {
-        recommendationData = JSON.parse(savedRecommendation);
-        setRecommendation(recommendationData);
-      } catch (e) {
-        console.error("Failed to parse recommendation from localStorage", e);
-      }
-    }
-
     async function fetchArticles() {
-      setLoading(true);
+      if (authLoading) return;
+      setLoadingArticles(true);
       try {
-        const query = recommendationData?.recommendation 
-          ? `articles about careers in ${recommendationData.recommendation}`
+        const query = recommendation 
+          ? `articles about careers in ${recommendation.recommendation}`
           : 'articles about career development for students in India';
         const result = await getStudyResources({ query, type: 'article' });
         setArticles(result.articles);
       } catch (error) {
         console.error("Failed to fetch articles:", error);
       } finally {
-        setLoading(false);
+        setLoadingArticles(false);
       }
     }
 
     fetchArticles();
-  }, []);
+  }, [recommendation, authLoading]);
 
   const recommendedCourses = recommendation?.recommendedCourses || [];
 
@@ -99,7 +88,7 @@ export default function ResourcesPage() {
           <p className="text-muted-foreground mb-6">
             Explore these articles to gain more insight into your potential career field.
           </p>
-          {loading ? (
+          {loadingArticles ? (
             <div className="text-center py-12">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
               <p className="mt-2 text-muted-foreground">Fetching relevant articles...</p>

@@ -44,8 +44,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { Loader2, Lightbulb, Sparkles, BrainCircuit, RefreshCw, Briefcase, GraduationCap, Building, Search,ChevronRight, ArrowUpRight, BookOpen } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
-const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
 
 type QuizStage = 'start' | 'quiz' | 'profile' | 'recommendation';
 
@@ -68,7 +69,8 @@ type ExamDetailsState = {
   };
 };
 
-function RecommendationResult({ recommendation, onRestart }: { recommendation: PersonalizedStreamRecommendationOutput; onRestart: () => void; }) {
+function RecommendationResult({ onRestart }: { onRestart: () => void; }) {
+  const { recommendation } = useAuth();
   const [examDetails, setExamDetails] = useState<ExamDetailsState>({});
 
   const fetchExamDetails = async (examName: string) => {
@@ -93,6 +95,10 @@ function RecommendationResult({ recommendation, onRestart }: { recommendation: P
       }));
     }
   };
+  
+  if (!recommendation) {
+      return null;
+  }
 
   return (
     <Card className="w-full max-w-4xl">
@@ -260,6 +266,9 @@ function RecommendationResult({ recommendation, onRestart }: { recommendation: P
 }
 
 export default function QuizPage() {
+  const { user, userProfile, loading: authLoading, recommendation, setRecommendation, updateUserProfile } = useAuth();
+  const router = useRouter();
+
   const [quizState, setQuizState] = useState<QuizState>({
     questions: [],
     answers: [],
@@ -270,24 +279,21 @@ export default function QuizPage() {
   });
   const [loading, setLoading] = useState(false);
   const [loadingRecommendation, setLoadingRecommendation] = useState(false);
-  const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
   const [error, setError] = useState<string | null>(null);
   
-  useEffect(() => {
-    try {
-      const savedRecommendation = localStorage.getItem(RECOMMENDATION_STORAGE_KEY);
-      if (savedRecommendation) {
-        setRecommendation(JSON.parse(savedRecommendation));
-        setQuizState(prevState => ({ ...prevState, stage: 'recommendation' }));
-      }
-    } catch (e) {
-      console.error("Could not parse saved recommendation", e);
-      localStorage.removeItem(RECOMMENDATION_STORAGE_KEY);
-    }
-  }, []);
-
   const form = useForm();
   
+  useEffect(() => {
+    if (!authLoading && !user) {
+        router.push('/login');
+        return;
+    }
+
+    if (recommendation) {
+      setQuizState(prevState => ({ ...prevState, stage: 'recommendation' }));
+    }
+  }, [authLoading, user, recommendation, router]);
+
   const currentQuestion = quizState.questions[quizState.currentStep];
 
   const handleApiError = (err: any, context: 'first_question' | 'next_question' | 'recommendation') => {
@@ -328,14 +334,13 @@ export default function QuizPage() {
     const { stage, answers, grade, stream, questions, totalQuestions } = quizState;
     if (stage !== 'quiz' || !grade) return;
   
-    // Pre-fetch questions to maintain a buffer of 2
     const currentAnswerCount = answers.length;
     const questionsNeeded = Math.min(currentAnswerCount + 2, totalQuestions);
   
     if (questions.length < questionsNeeded) {
       fetchQuestion(answers, grade, stream);
     }
-  }, [quizState.answers, quizState.stage]);
+  }, [quizState.answers, quizState.stage, quizState.grade, quizState.stream, quizState.questions.length, quizState.totalQuestions]);
   
 
   const fetchFirstQuestion = async (grade: Grade, stream?: string) => {
@@ -393,24 +398,28 @@ export default function QuizPage() {
     const newAnswers = [...quizState.answers, { question: currentQuestion.question, answer: answerValue }];
     const nextStep = quizState.currentStep + 1;
     
-    if (nextStep >= quizState.totalQuestions) {
-        setQuizState(prevState => ({
-            ...prevState,
-            answers: newAnswers,
-            stage: 'profile',
-            currentStep: nextStep,
-        }));
-    } else {
-        setQuizState(prevState => ({
-            ...prevState,
-            answers: newAnswers,
-            currentStep: nextStep,
-        }));
-    }
+    setQuizState(prevState => {
+        if (nextStep >= prevState.totalQuestions) {
+            return {
+                ...prevState,
+                answers: newAnswers,
+                stage: 'profile',
+                currentStep: nextStep,
+            };
+        } else {
+            return {
+                ...prevState,
+                answers: newAnswers,
+                currentStep: nextStep,
+            };
+        }
+    });
   };
 
 
   const getRecommendation = async (data: any) => {
+    if (!user) return;
+
     setLoadingRecommendation(true);
     setError(null);
     setRecommendation(null);
@@ -421,12 +430,10 @@ export default function QuizPage() {
         grade: quizState.grade!,
         stream: quizState.stream,
       });
+      
+      await updateUserProfile({ recommendation: result });
       setRecommendation(result);
-      try {
-         localStorage.setItem(RECOMMENDATION_STORAGE_KEY, JSON.stringify(result));
-      } catch (e) {
-          console.error("Could not save recommendation to local storage", e);
-      }
+
       setQuizState(prevState => ({ ...prevState, stage: 'recommendation' }));
     } catch (error) {
       handleApiError(error, 'recommendation');
@@ -436,8 +443,9 @@ export default function QuizPage() {
   };
   
 
-  const restartQuiz = () => {
-    localStorage.removeItem(RECOMMENDATION_STORAGE_KEY);
+  const restartQuiz = async () => {
+    await updateUserProfile({ recommendation: null });
+    setRecommendation(null);
     setQuizState({
       questions: [],
       answers: [],
@@ -448,7 +456,6 @@ export default function QuizPage() {
       grade: undefined,
       stream: undefined,
     });
-    setRecommendation(null);
     setError(null);
     setLoading(false);
     form.reset();
@@ -490,6 +497,10 @@ export default function QuizPage() {
   const progressValue = quizState.totalQuestions > 0 ? ((quizState.currentStep) / quizState.totalQuestions) * 100 : 0;
   
   const renderContent = () => {
+    if (authLoading) {
+      return <Loader2 className="h-12 w-12 animate-spin text-primary" />;
+    }
+    
     if (loadingRecommendation) {
         return (
             <Card className="w-full max-w-lg text-center">
@@ -508,8 +519,8 @@ export default function QuizPage() {
         );
     }
     
-    if (quizState.stage === 'recommendation' && recommendation) {
-       return <RecommendationResult recommendation={recommendation} onRestart={restartQuiz} />;
+    if (quizState.stage === 'recommendation') {
+       return <RecommendationResult onRestart={restartQuiz} />;
     }
 
     return (
@@ -525,6 +536,7 @@ export default function QuizPage() {
                     <FormField
                         control={form.control}
                         name="grade"
+                        defaultValue={userProfile?.grade}
                         rules={{ required: "Please select your grade." }}
                         render={({ field }) => (
                             <FormItem className="space-y-3">
@@ -561,6 +573,7 @@ export default function QuizPage() {
                          <FormField
                             control={form.control}
                             name="stream"
+                            defaultValue={userProfile?.stream}
                             rules={{ required: 'Please select your stream.' }}
                             render={({ field }) => (
                                 <FormItem>

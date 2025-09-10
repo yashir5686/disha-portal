@@ -20,37 +20,16 @@ import {
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useState } from "react";
-import type { PersonalizedStreamRecommendationOutput } from "@/ai/flows/personalized-stream-recommendation-from-quiz";
 import { getStudyResources, type StudyResource } from "@/ai/flows/get-study-resources";
-
-const RECOMMENDATION_STORAGE_KEY = 'disha-portal-recommendation';
-
-type User = {
-  name: string;
-  profilePicture: string;
-};
-
+import { useAuth } from "@/context/AuthContext";
+import { useRouter } from "next/navigation";
 
 export default function DashboardPage() {
-  const [recommendation, setRecommendation] = useState<PersonalizedStreamRecommendationOutput | null>(null);
-  const [hasCheckedStorage, setHasCheckedStorage] = useState(false);
-  const [user, setUser] = useState<User | null>(null);
+  const { user, userProfile, loading, recommendation, logout } = useAuth();
+  const router = useRouter();
   const [featuredResource, setFeaturedResource] = useState<StudyResource | null>(null);
 
-
   useEffect(() => {
-    // Check for saved recommendation in local storage
-    const savedRecommendation = localStorage.getItem(RECOMMENDATION_STORAGE_KEY);
-    if (savedRecommendation) {
-      try {
-        setRecommendation(JSON.parse(savedRecommendation));
-      } catch (e) {
-        console.error("Failed to parse recommendation from localStorage", e);
-        localStorage.removeItem(RECOMMENDATION_STORAGE_KEY);
-      }
-    }
-    setHasCheckedStorage(true);
-
     async function fetchResource() {
         try {
             const resourceData = await getStudyResources({ query: 'any interesting study resource for students', type: 'resource' });
@@ -65,38 +44,35 @@ export default function DashboardPage() {
     }
 
     fetchResource();
-
   }, []);
 
   const handleLogin = () => {
-    setUser({
-      name: "Arjun",
-      profilePicture: "https://picsum.photos/100/100",
-    });
+    router.push('/login');
   };
 
-  const handleLogout = () => {
-    setUser(null);
+  const handleLogout = async () => {
+    await logout();
+    router.push('/');
   };
 
   const hasTakenQuiz = !!recommendation;
-  
   const profileCompletion = user ? (hasTakenQuiz ? 65 : 30) : 0;
 
   const defaultResource = {
     title: "Resource Spotlight",
+    platform: "Disha Portal",
     description: "Discover a new study resource, an upcoming exam, or an interesting career fact to keep you engaged.",
-    imageUrl: "https://picsum.photos/600/400",
+    imageUrl: "https://picsum.photos/seed/dashboard-resource/600/400",
     link: "/resources"
   };
 
   const resourceToDisplay = featuredResource || defaultResource;
   
-  if (!hasCheckedStorage) {
+  if (loading) {
     return (
         <AppLayout>
             <main className="flex flex-1 items-center justify-center">
-                {/* Optional: Add a loading spinner here */}
+                {/* Full page loader can be added here */}
             </main>
         </AppLayout>
     )
@@ -107,18 +83,17 @@ export default function DashboardPage() {
       <main className="flex-1 overflow-y-auto">
         <div className="container mx-auto px-4 py-8">
           
-          {/* Header Section */}
           <div className="flex items-center justify-between mb-8">
              <div className="flex items-center gap-4">
-              {user && (
+              {userProfile && (
                 <Avatar className="h-16 w-16">
-                  <AvatarImage src={user.profilePicture} alt={user.name} />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={"https://picsum.photos/seed/avatar/100/100"} alt={userProfile.name} />
+                  <AvatarFallback>{userProfile.name.charAt(0)}</AvatarFallback>
                 </Avatar>
               )}
               <div>
                 <h1 className="text-2xl font-bold font-headline">
-                  {user ? `Welcome back, ${user.name}!` : "Welcome to Disha Portal!"}
+                  {userProfile ? `Welcome back, ${userProfile.name}!` : "Welcome to Disha Portal!"}
                 </h1>
                 <p className="text-muted-foreground">
                   {user ? "Let's continue charting your path to success." : "Your compass to a brighter future."}
@@ -132,7 +107,6 @@ export default function DashboardPage() {
             )}
           </div>
 
-          {/* Main Call-to-Action Card */}
           <div className="mb-12">
             <Card className="shadow-lg">
               <CardContent className="p-8">
@@ -188,7 +162,6 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* "Your Journey" Progress Tracker */}
           {user && (
             <div className="mb-12">
               <h2 className="text-2xl font-bold font-headline mb-6">Your Journey So Far</h2>
@@ -241,7 +214,6 @@ export default function DashboardPage() {
             </div>
           )}
           
-          {/* Quick Links / Feature Grid */}
           <div className="mb-12">
             <h2 className="text-2xl font-bold font-headline mb-6">Quick Links</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -284,7 +256,6 @@ export default function DashboardPage() {
             </div>
           </div>
           
-          {/* "Did You Know?" or "Resource Spotlight" Section */}
           <div>
             <Card>
               <CardHeader>
